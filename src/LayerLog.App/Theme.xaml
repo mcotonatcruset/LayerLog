@@ -16,7 +16,7 @@
   <SolidColorBrush x:Key="Ivory" Color="#E7DDC8"/>
 
   <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
-  <DropShadowEffect x:Key="SceneShadow" BlurRadius="8" ShadowDepth="0" Opacity="0.9" Color="Black" RenderingBias="Performance"/>
+  <DropShadowEffect x:Key="SceneShadow" BlurRadius="14" ShadowDepth="0" Opacity="1" Color="Black" RenderingBias="Performance"/>
 
   <Style x:Key="MutedText" TargetType="TextBlock">
     <Setter Property="Foreground" Value="{StaticResource Muted}"/>
@@ -152,12 +152,6 @@
     <Setter Property="BorderBrush" Value="{StaticResource Line}"/>
     <Setter Property="Padding" Value="8,5"/>
     <Setter Property="SelectionBrush" Value="{StaticResource Primary}"/>
-  </Style>
-
-  <Style TargetType="DatePickerTextBox">
-    <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
-    <Setter Property="CaretBrush" Value="{StaticResource Ink}"/>
   </Style>
 
   <Style TargetType="CheckBox">

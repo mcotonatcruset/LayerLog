@@ -176,7 +176,18 @@
                     <DockPanel>
                       <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Esborrar" Command="{Binding DeleteCommand}" Margin="16,0,0,0" VerticalAlignment="Center"/>
                       <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Afegir foto" Command="{Binding AddPhotoCommand}" Margin="16,0,0,0" VerticalAlignment="Center"/>
-                      <DatePicker SelectedDate="{Binding Date}" SelectedDateFormat="Short" Width="130" Background="{StaticResource Surface}" Foreground="{StaticResource Ink}" BorderBrush="{StaticResource Line}" AutomationProperties.Name="Data de la impressió"/>
+                      <TextBox Text="{Binding DateText, UpdateSourceTrigger=PropertyChanged}" Width="104" VerticalAlignment="Center" AutomationProperties.Name="Data de la impressió, dia, mes i any" AutomationProperties.HelpText="Exemple: 31/10/2026" ToolTip="Dia/mes/any">
+                        <TextBox.Style>
+                          <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding DateInvalid}" Value="True">
+                                <Setter Property="BorderBrush" Value="{StaticResource PrimaryText}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </TextBox.Style>
+                      </TextBox>
+                      <TextBlock DockPanel.Dock="Left" Text="Data no vàlida" Foreground="{StaticResource PrimaryText}" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0" Visibility="{Binding DateInvalid, Converter={StaticResource BoolToVisible}}"/>
                       <ItemsControl ItemsSource="{Binding Choices}" VerticalAlignment="Center" Margin="16,0,8,0">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>

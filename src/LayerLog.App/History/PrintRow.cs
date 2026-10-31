@@ -16,14 +16,15 @@ public sealed partial class PrintRow : ObservableObject
     readonly Action changed;
     PrintRecord record;
 
-    [ObservableProperty] private DateTime date;
+    [ObservableProperty] private string dateText;
+    [ObservableProperty] private bool dateInvalid;
     [ObservableProperty] private string note;
     [ObservableProperty] private BitmapImage? photo;
 
     public PrintRow(PrintRecord record, HistoryRepository repository, PhotoStore photos, Action changed)
     {
         (this.record, this.repository, this.photos, this.changed) = (record, repository, photos, changed);
-        date = record.Date.ToDateTime(TimeOnly.MinValue);
+        dateText = PrintDate.Format(record.Date);
         note = record.Note;
         photo = Images.From(record.PhotoPath);
     }
@@ -33,7 +34,13 @@ public sealed partial class PrintRow : ObservableObject
     public IReadOnlyList<StarChoice> Choices =>
         Enumerable.Range(1, 5).Select(n => new StarChoice(n, n <= (record.Rating ?? 0) ? "★" : "☆", $"Valorar amb {n} de 5")).ToList();
 
-    partial void OnDateChanged(DateTime value) => Save(record with { Date = DateOnly.FromDateTime(value) });
+    // A half-typed date just stays unsaved: the field is marked until it parses.
+    partial void OnDateTextChanged(string value)
+    {
+        var parsed = PrintDate.Parse(value);
+        DateInvalid = parsed is null;
+        if (parsed is { } date) Save(record with { Date = date });
+    }
 
     partial void OnNoteChanged(string value) => Save(record with { Note = value });
 
