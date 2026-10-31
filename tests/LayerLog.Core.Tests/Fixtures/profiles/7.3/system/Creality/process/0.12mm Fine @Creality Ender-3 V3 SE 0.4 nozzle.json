@@ -1,0 +1,1 @@
+{ "name": "0.12mm Fine @Creality Ender-3 V3 SE 0.4 nozzle", "inherits": "common", "layer_height": "0.12", "wall_loops": "2", "outer_wall_speed": ["60"], "sparse_infill_density": "15%" }
