@@ -1,0 +1,43 @@
+using System.Collections.ObjectModel;
+using System.IO;
+using CommunityToolkit.Mvvm.ComponentModel;
+using LayerLog.Core.Models;
+
+namespace LayerLog.App.Viewer;
+
+public sealed partial class ExplorerNode(string name, string? relativePath, Action? onMarkedChanged) : ObservableObject
+{
+    public string Name { get; } = name;
+    public string? RelativePath { get; } = relativePath;
+    public bool IsFile => RelativePath is not null;
+    public ObservableCollection<ExplorerNode> Children { get; } = [];
+
+    [ObservableProperty] private bool isExpanded;
+    [ObservableProperty] private bool isSelected;
+    [ObservableProperty] private bool isMarked;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(HasCount))] private int gcodeCount;
+
+    public bool HasCount => GcodeCount > 0;
+
+    partial void OnIsMarkedChanged(bool value) => onMarkedChanged?.Invoke();
+
+    public IEnumerable<ExplorerNode> Files() => IsFile ? [this] : Children.SelectMany(c => c.Files());
+
+    public static List<ExplorerNode> Build(IEnumerable<ModelFile> models, Action onMarkedChanged)
+    {
+        var root = new ExplorerNode("", null, null);
+        foreach (var model in models)
+        {
+            var current = root;
+            var parts = model.RelativePath.Split(Path.DirectorySeparatorChar);
+            foreach (var folder in parts[..^1])
+            {
+                var next = current.Children.FirstOrDefault(c => !c.IsFile && c.Name == folder);
+                if (next is null) current.Children.Add(next = new ExplorerNode(folder, null, null));
+                current = next;
+            }
+            current.Children.Add(new ExplorerNode(parts[^1], model.RelativePath, onMarkedChanged));
+        }
+        return [.. root.Children];
+    }
+}

@@ -24,7 +24,7 @@ public static partial class ConfigDiff
     // Multi-extruder settings repeat their value: "200,200".
     static string First(string value) => value.Split(',')[0].Trim().Trim('"');
 
-    [GeneratedRegex(@"^(inherits|name$|from$|type$|version$|setting_id$|instantiation$|compatible_|print_settings_id$|filament_settings_id$|default_filament_colour$)")]
+    [GeneratedRegex(@"^(inherits|name$|from$|type$|version$|setting_id$|instantiation$|compatible_|print_settings_id$|filament_settings_id$|default_filament_colour$)|gcode")]
     private static partial Regex IdentityKey();
 
     [GeneratedRegex(@"_id$|^inherits|filename|time|gcode|uuid|version|^name$|colour|compatible_", RegexOptions.IgnoreCase)]

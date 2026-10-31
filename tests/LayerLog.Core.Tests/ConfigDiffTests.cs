@@ -34,6 +34,10 @@ public class ConfigDiffTests
     }
 
     [Fact]
+    public void Diff_skips_embedded_gcode_snippets() =>
+        Assert.Empty(ConfigDiff.Compare(D("filament_end_gcode", "; a"), D("filament_end_gcode", "; b")));
+
+    [Fact]
     public void Diff_ignores_keys_missing_on_either_side()
     {
         Assert.Empty(ConfigDiff.Compare(D("only_a", "1"), Empty));
