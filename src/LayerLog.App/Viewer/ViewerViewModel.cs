@@ -25,13 +25,15 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
 
     AppSettings settings = loaded;
     List<ModelFile> models = [];
-    CancellationTokenSource? loading;
+    CancellationTokenSource? loading, thumbnails;
     ModelWatcher? watcher;
+    FigureFilter filter;
     string? shown;
     bool refreshing, refreshAgain;
 
     public string? ModelFolder => settings.ModelFolder;
     public ObservableCollection<ExplorerNode> Nodes { get; } = [];
+    public ObservableCollection<ExplorerNode> Results { get; } = [];
     public ObservableCollection<SettingRow> BestRows { get; } = [];
     public ObservableCollection<FigurePrint> Prints { get; } = [];
 
@@ -51,6 +53,9 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
     [ObservableProperty] private string sendText = "Enviar a Creality Print";
     [ObservableProperty] private bool showGroupHint;
     [ObservableProperty] private ExplorerNode? selectedNode;
+    [ObservableProperty] private string query = "";
+    [ObservableProperty] private bool showResults;
+    [ObservableProperty] private bool hasNoResults;
 
     public async Task StartAsync()
     {
@@ -131,6 +136,34 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
         {
             refreshing = false;
         }
+        await LoadThumbnailsAsync();
+    }
+
+    // One at a time and off the UI thread: a large STL takes a moment to read and the list fills in as they arrive.
+    async Task LoadThumbnailsAsync()
+    {
+        thumbnails?.Cancel();
+        var cts = thumbnails = new CancellationTokenSource();
+        var folder = ModelFolder!;
+        var nodes = Nodes.SelectMany(n => n.Files()).ToDictionary(n => n.RelativePath!);
+        foreach (var file in models.Where(m => m.RelativePath.EndsWith(".stl", StringComparison.OrdinalIgnoreCase)).ToList())
+        {
+            if (!nodes.TryGetValue(file.RelativePath, out var node)) continue;
+            var path = ThumbnailStore.PathFor(folder, file);
+            if (node.ThumbnailPath == path) continue;
+            try
+            {
+                var bytes = await Task.Run(() => ThumbnailStore.Load(folder, file, path));
+                if (cts.IsCancellationRequested) return;
+                node.Thumbnail = Images.From(bytes);
+            }
+            catch (Exception e) when (e is StlFormatException or IOException or UnauthorizedAccessException)
+            {
+                // Without a picture the row shows its file type, and the viewer reports the error if it is opened.
+                if (cts.IsCancellationRequested) return;
+            }
+            node.ThumbnailPath = path;
+        }
     }
 
     void ClearFigure(string? message)
@@ -156,11 +189,26 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
         var counts = repository.ModelGcodeCounts();
         foreach (var file in Nodes.SelectMany(n => n.Files()))
             file.GcodeCount = counts.GetValueOrDefault(file.RelativePath!);
+        UpdateResults();
     }
 
-    partial void OnSelectedNodeChanged(ExplorerNode? value)
+    partial void OnQueryChanged(string value) => UpdateResults();
+
+    void UpdateResults()
     {
-        if (value?.RelativePath is { } path) Open(path);
+        Results.Clear();
+        ShowResults = !string.IsNullOrWhiteSpace(Query) || filter != FigureFilter.All;
+        if (ShowResults)
+            foreach (var file in Nodes.SelectMany(n => n.Files()).Where(f => ModelSearch.Matches(f.RelativePath!, f.GcodeCount, Query, filter)))
+                Results.Add(file);
+        HasNoResults = ShowResults && Results.Count == 0;
+    }
+
+    partial void OnSelectedNodeChanged(ExplorerNode? oldValue, ExplorerNode? newValue)
+    {
+        // The hidden tree can't clear this itself while the results are showing.
+        if (oldValue is not null) oldValue.IsSelected = false;
+        if (newValue?.RelativePath is { } path) Open(path);
     }
 
     public void ShowModel(string relativePath)
@@ -267,6 +315,25 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
         var count = Nodes.SelectMany(n => n.Files()).Count(f => f.IsMarked);
         SendText = count > 1 ? $"Enviar {count} figures a Creality Print" : "Enviar a Creality Print";
         ShowGroupHint = CrealityLauncher.GroupWarningNeeded(count);
+    }
+
+    [RelayCommand]
+    void SetFilter(FigureFilter value)
+    {
+        filter = value;
+        UpdateResults();
+    }
+
+    [RelayCommand]
+    void ClearQuery() => Query = "";
+
+    [RelayCommand]
+    void OpenResult(ExplorerNode node) => ShowModel(node.RelativePath!);
+
+    [RelayCommand]
+    void CollapseAll()
+    {
+        foreach (var node in Nodes) node.Collapse();
     }
 
     [RelayCommand]

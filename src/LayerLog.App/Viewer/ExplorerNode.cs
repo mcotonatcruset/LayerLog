@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using LayerLog.Core.Models;
 
@@ -11,7 +12,11 @@ public sealed partial class ExplorerNode(string name, string? relativePath, Acti
     public string? RelativePath { get; } = relativePath;
     public bool IsFile => RelativePath is not null;
     public ObservableCollection<ExplorerNode> Children { get; } = [];
+    public string Extension => Path.GetExtension(Name).TrimStart('.').ToUpperInvariant();
+    public string? Folder => Path.GetDirectoryName(RelativePath);
+    public string? ThumbnailPath { get; set; }
 
+    [ObservableProperty] private BitmapImage? thumbnail;
     [ObservableProperty] private bool isExpanded;
     [ObservableProperty] private bool isSelected;
     [ObservableProperty] private bool isMarked;
@@ -22,6 +27,12 @@ public sealed partial class ExplorerNode(string name, string? relativePath, Acti
     partial void OnIsMarkedChanged(bool value) => onMarkedChanged?.Invoke();
 
     public IEnumerable<ExplorerNode> Files() => IsFile ? [this] : Children.SelectMany(c => c.Files());
+
+    public void Collapse()
+    {
+        IsExpanded = false;
+        foreach (var child in Children) child.Collapse();
+    }
 
     /// <summary>Updates a tree in place, so open folders, marks and the selection survive.</summary>
     public static void Merge(IList<ExplorerNode> current, IReadOnlyList<ExplorerNode> wanted) =>
