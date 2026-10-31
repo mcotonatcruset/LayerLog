@@ -1,0 +1,14 @@
+# Third-party models and personal gcode data must never reach the public repo
+*.stl
+*.3mf
+*.gcode
+prototype/
+
+bin/
+obj/
+.vs/
+spikes/
+.superpowers/
+.claude/
+!tests/**/Fixtures/*.gcode
+.impeccable/
