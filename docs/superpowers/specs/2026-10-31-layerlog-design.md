@@ -51,7 +51,7 @@ La idea en una frase: un visor 3D de la teva carpeta de models amb un historial 
 
 - **Tecnologia:** WPF sobre .NET 10 (LTS). És el més demanat a les ofertes d'escriptori amb C# i és el pas natural des de Windows Forms.
 - **Base de dades:** SQLite. L'historial queda en un sol fitxer local, a `%LOCALAPPDATA%\LayerLog`.
-- **Carpeta per defecte a la primera obertura:** `C:\Users\marti\Documents\Impresora3D` si existeix. Si no, es demana.
+- **Carpeta per defecte a la primera obertura:** `Documents\Impresora3D` si existeix. Si no, es demana.
 - **Identitat d'un model:** es guarda el camí relatiu a la carpeta i el hash del fitxer. Si un model es mou o es reanomena, el hash permet retrobar l'enllaç.
 - **Millor configuració d'una figura:** és la de la impressió amb la valoració més alta i, en cas d'empat, la més recent.
 - **Comparar dues entrades de l'historial:** inclòs a la primera versió, dins de la secció Historial.
