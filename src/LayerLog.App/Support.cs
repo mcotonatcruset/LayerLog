@@ -8,7 +8,10 @@ namespace LayerLog.App;
 
 public static class AppPaths
 {
-    public static string DataFolder { get; } = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LayerLog");
+    // LAYERLOG_DATA gives demos and manual checks their own data, cut off from the real one and from any SD card.
+    static readonly string? Isolated = Environment.GetEnvironmentVariable("LAYERLOG_DATA");
+    public static bool IsIsolated => Isolated is not null;
+    public static string DataFolder { get; } = Isolated ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "LayerLog");
     public static string Database => Path.Combine(DataFolder, "layerlog.db");
     public static string Settings => Path.Combine(DataFolder, "settings.json");
     public static string Photos => Path.Combine(DataFolder, "photos");

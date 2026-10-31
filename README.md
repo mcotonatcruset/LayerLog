@@ -2,6 +2,10 @@
 
 A Windows desktop viewer for your 3D-printing models, with a history that remembers exactly how each figure was printed.
 
+![LayerLog: 3D viewer, print history and comparison](docs/layerlog.gif)
+
+*Demo with an original generated model, sample notes and real Creality Print settings.*
+
 Tuning a slicer until a figure comes out right takes a lot of trial and error, and that knowledge gets lost between changing profiles and loose gcode files on SD cards. LayerLog reads the gcode already on your cards and keeps, for each one, the settings used and what you changed from the base profile.
 
 ## Features

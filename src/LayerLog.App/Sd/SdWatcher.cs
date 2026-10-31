@@ -38,6 +38,8 @@ public sealed class SdWatcher : IDisposable
 
     public void Rescan()
     {
+        if (AppPaths.IsIsolated) return;
+
         var present = new Dictionary<string, string>();
         foreach (var drive in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Removable && d.IsReady))
             if (VolumeInfo.ReadSerial(drive.Name) is { } serial) present[drive.Name] = serial;
