@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using LayerLog.Core.Gcode;
+using LayerLog.Core.Models;
 using LayerLog.Core.Profiles;
 using Microsoft.Data.Sqlite;
 
@@ -77,6 +78,52 @@ public sealed class HistoryRepository
             Objects = Strings(c, "SELECT name FROM gcode_object WHERE gcode_id = $0 ORDER BY rowid", e.Id),
             VolumeSerials = Strings(c, "SELECT DISTINCT volume_serial FROM gcode_location WHERE gcode_id = $0", e.Id),
         }).ToList();
+    }
+
+    public IReadOnlyList<GcodeEntry> ListForModel(string relativePath) =>
+        Entries("WHERE EXISTS (SELECT 1 FROM gcode_object o WHERE o.gcode_id = g.id AND o.model_path = $0)", [relativePath]);
+
+    public void LinkObject(long gcodeId, string objectName, string relativePath, string? fileHash, bool manual = true, long? size = null)
+    {
+        using var c = Database.Open(path);
+        Command(c, "UPDATE gcode_object SET model_path = $0, model_hash = $1, model_size = $2, manual = $3 WHERE gcode_id = $4 AND name = $5",
+            relativePath, fileHash, size, manual, gcodeId, objectName).ExecuteNonQuery();
+    }
+
+    public void LinkUnlinked(string root, IReadOnlyList<ModelFile> models)
+    {
+        foreach (var (gcodeId, name) in UnlinkedObjects())
+        {
+            var match = ModelLibrary.MatchObject(name, models);
+            if (match is null) continue;
+            var file = models.First(m => m.RelativePath == match);
+            LinkObject(gcodeId, name, match, ModelLibrary.HashFile(Path.Combine(root, match)), manual: false, file.Size);
+        }
+    }
+
+    // ponytail: hashes only same-size files, so the common case never reads the whole model folder.
+    public void RelinkMovedModels(string root, IReadOnlyList<ModelFile> models)
+    {
+        using var c = Database.Open(path);
+        var links = new List<(string Path, string Hash, long Size)>();
+        using (var r = Command(c, "SELECT DISTINCT model_path, model_hash, model_size FROM gcode_object WHERE model_hash IS NOT NULL AND model_size IS NOT NULL").ExecuteReader())
+            while (r.Read()) links.Add((r.GetString(0), r.GetString(1), r.GetInt64(2)));
+
+        foreach (var link in links.Where(l => !File.Exists(Path.Combine(root, l.Path))))
+        {
+            var moved = models.FirstOrDefault(m => m.Size == link.Size && ModelLibrary.HashFile(Path.Combine(root, m.RelativePath)) == link.Hash);
+            if (moved is not null)
+                Command(c, "UPDATE gcode_object SET model_path = $0 WHERE model_path = $1", moved.RelativePath, link.Path).ExecuteNonQuery();
+        }
+    }
+
+    List<(long GcodeId, string Name)> UnlinkedObjects()
+    {
+        using var c = Database.Open(path);
+        var list = new List<(long, string)>();
+        using var r = Command(c, "SELECT gcode_id, name FROM gcode_object WHERE model_path IS NULL").ExecuteReader();
+        while (r.Read()) list.Add((r.GetInt64(0), r.GetString(1)));
+        return list;
     }
 
     public long AddPrint(long gcodeId, DateOnly date, int? rating, string note, string? photoPath)

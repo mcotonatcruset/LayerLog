@@ -45,6 +45,14 @@ static class Database
         PRAGMA user_version = 1;
         """;
 
+    const string ModelLinks = """
+        ALTER TABLE gcode_object ADD COLUMN model_path TEXT;
+        ALTER TABLE gcode_object ADD COLUMN model_hash TEXT;
+        ALTER TABLE gcode_object ADD COLUMN model_size INTEGER;
+        ALTER TABLE gcode_object ADD COLUMN manual INTEGER NOT NULL DEFAULT 0;
+        PRAGMA user_version = 2;
+        """;
+
     public static SqliteConnection Open(string path)
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
@@ -59,6 +67,7 @@ static class Database
         read.CommandText = "PRAGMA user_version;";
         var version = Convert.ToInt32(read.ExecuteScalar());
         if (version < 1) Execute(connection, Schema);
+        if (version < 2) Execute(connection, ModelLinks);
     }
 
     static void Execute(SqliteConnection connection, string sql)
