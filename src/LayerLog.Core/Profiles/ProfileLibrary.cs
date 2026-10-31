@@ -17,7 +17,14 @@ public sealed class ProfileLibrary(string creatorRoot)
         {
             var folder = Path.Combine(creatorRoot, version, "system", "Creality", kind == ProfileKind.Process ? "process" : "filament");
             if (!File.Exists(Path.Combine(folder, $"{name}.json"))) continue;
-            return new BaseProfile(Chain(folder, name, []), version, VersionKey(version) != wanted);
+            try
+            {
+                return new BaseProfile(Chain(folder, name, []), version, VersionKey(version) != wanted);
+            }
+            catch (Exception e) when (e is JsonException or IOException)
+            {
+                // Unreadable here: another version may still have it.
+            }
         }
         return null;
     }
@@ -30,7 +37,7 @@ public sealed class ProfileLibrary(string creatorRoot)
     static int VersionKey(string version)
     {
         var parts = version.Split('.');
-        return int.Parse(parts[0]) * 100 + int.Parse(parts[1]);
+        return parts.Length >= 2 && int.TryParse(parts[0], out var major) && int.TryParse(parts[1], out var minor) ? major * 100 + minor : 0;
     }
 
     static Dictionary<string, string> Chain(string folder, string name, HashSet<string> seen)

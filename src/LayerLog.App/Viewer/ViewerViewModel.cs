@@ -140,6 +140,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
         var cts = loading = new CancellationTokenSource();
         Message = null;
         SizeText = null;
+        IsLoading = false;
         MeshChanged?.Invoke(null);
 
         if (!relativePath.EndsWith(".stl", StringComparison.OrdinalIgnoreCase))

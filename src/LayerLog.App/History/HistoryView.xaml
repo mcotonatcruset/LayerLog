@@ -201,7 +201,7 @@
         </StackPanel>
 
         <StackPanel Margin="0,26,0,0">
-          <ToggleButton x:Name="FullToggle" Style="{StaticResource MoreToggle}" Content="{Binding FullConfigTitle}" HorizontalAlignment="Left"/>
+          <ToggleButton x:Name="FullToggle" Style="{StaticResource MoreToggle}" Content="{Binding FullConfigTitle}" IsChecked="{Binding BaseMissing, Mode=OneWay}" HorizontalAlignment="Left"/>
           <TextBox Style="{StaticResource Mono}" Text="{Binding FullConfig, Mode=OneWay}" Visibility="{Binding IsChecked, ElementName=FullToggle, Converter={StaticResource BoolToVisible}}"/>
         </StackPanel>
       </StackPanel>

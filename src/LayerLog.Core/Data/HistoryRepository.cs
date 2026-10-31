@@ -32,15 +32,19 @@ public sealed class HistoryRepository
     {
         using var c = Database.Open(path);
         using var tx = c.BeginTransaction();
-        var id = (long)Command(c, """
+        var inserted = Command(c, """
             INSERT INTO gcode (hash, file_name, generated_at, version, estimated_time, filament_grams, process_profile, filament_profile,
                 config_json, process_changes_json, filament_changes_json, base_source_version, base_approximate, base_missing, thumbnail)
-            VALUES ($0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id
+            VALUES ($0, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+            ON CONFLICT (hash) DO NOTHING RETURNING id
             """,
             hash, fileName, g.GeneratedAt.ToString(TimeFormat, CultureInfo.InvariantCulture), g.Version, g.EstimatedTime, g.FilamentGrams,
             g.ProcessProfile, g.FilamentProfile, JsonSerializer.Serialize(g.Config),
             JsonSerializer.Serialize(comparison.Process), JsonSerializer.Serialize(comparison.Filament),
-            comparison.SourceVersion, comparison.Approximate, comparison.Missing, g.Thumbnail).ExecuteScalar()!;
+            comparison.SourceVersion, comparison.Approximate, comparison.Missing, g.Thumbnail).ExecuteScalar();
+        if (inserted is null) return (long)Command(c, "SELECT id FROM gcode WHERE hash = $0", hash).ExecuteScalar()!;
+
+        var id = (long)inserted;
         foreach (var name in g.Objects)
             Command(c, "INSERT INTO gcode_object (gcode_id, name) VALUES ($0, $1)", id, name).ExecuteNonQuery();
         tx.Commit();

@@ -181,7 +181,11 @@ public sealed partial class HistoryViewModel(HistoryRepository repository, Photo
     void UpdateMarks()
     {
         var marked = Entries.Where(e => e.IsMarked).ToList();
-        if (marked.Count > 2) marked[0].IsMarked = false; // re-enters with two left
+        if (marked.Count > 2)
+        {
+            marked[0].IsMarked = false; // re-enters with two left
+            return;
+        }
         CanCompare = marked.Count == 2;
         CompareText = CanCompare ? "2 entrades marcades" : "Marca dues entrades per comparar-les";
     }

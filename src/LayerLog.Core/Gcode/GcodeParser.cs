@@ -58,7 +58,8 @@ public static partial class GcodeParser
             else if (GeneratedBy().Match(line) is { Success: true } g)
             {
                 version = g.Groups[1].Value;
-                generatedAt = DateTime.ParseExact($"{g.Groups[2].Value} {g.Groups[3].Value}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+                if (!DateTime.TryParseExact($"{g.Groups[2].Value} {g.Groups[3].Value}", "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out generatedAt))
+                    throw new GcodeFormatException("La data del fitxer no és vàlida.");
             }
             else if (line.StartsWith("; filament used [g] = "))
                 grams = double.TryParse(line[22..], CultureInfo.InvariantCulture, out var v) ? v : null;
@@ -82,7 +83,14 @@ public static partial class GcodeParser
             processBase.Length > 0 ? processBase : process,
             filamentBase.Length > 0 ? filamentBase : filament,
             config,
-            bestThumbnail.Length > 0 ? Convert.FromBase64String(bestThumbnail) : null);
+            Decode(bestThumbnail));
+    }
+
+    // A broken preview is no reason to lose the settings.
+    static byte[]? Decode(string base64)
+    {
+        var bytes = new byte[base64.Length];
+        return Convert.TryFromBase64String(base64, bytes, out var length) && length > 0 ? bytes[..length] : null;
     }
 
     static string Unquote(string value) => value.Split(';')[0].Trim().Trim('"');

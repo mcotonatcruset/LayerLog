@@ -6,10 +6,17 @@ namespace LayerLog.App.Sd;
 
 public sealed class SdWatcher : IDisposable
 {
-    readonly Dispatcher dispatcher;
-    readonly Dictionary<string, (string Serial, FileSystemWatcher Watcher)> known = [];
+    sealed class Card(string serial)
+    {
+        public string Serial { get; } = serial;
+        public string? Imported { get; set; }
+        public string? Pending { get; set; }
+    }
+
+    readonly Dictionary<string, Card> known = [];
     readonly DispatcherTimer rescan;
-    readonly Dictionary<string, DispatcherTimer> pending = [];
+    readonly DispatcherTimer poll;
+    bool polling;
 
     /// <summary>Root and serial when a card appears; root and null when it goes away.</summary>
     public event Action<string, string?>? CardChanged;
@@ -17,9 +24,10 @@ public sealed class SdWatcher : IDisposable
 
     public SdWatcher(Dispatcher dispatcher)
     {
-        this.dispatcher = dispatcher;
         rescan = new DispatcherTimer(TimeSpan.FromMilliseconds(600), DispatcherPriority.Background, (_, _) => { rescan!.Stop(); Rescan(); }, dispatcher);
         rescan.Stop();
+        // ponytail: polling, because a FileSystemWatcher holds a handle that stops Windows ejecting the card.
+        poll = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, async (_, _) => await PollAsync(), dispatcher);
     }
 
     public void RescanSoon()
@@ -30,56 +38,55 @@ public sealed class SdWatcher : IDisposable
 
     public void Rescan()
     {
-        var present = DriveInfo.GetDrives()
-            .Where(d => d.DriveType == DriveType.Removable && d.IsReady)
-            .Select(d => (Root: d.Name, Serial: VolumeInfo.ReadSerial(d.Name)))
-            .Where(d => d.Serial is not null)
-            .ToDictionary(d => d.Root, d => d.Serial!);
+        var present = new Dictionary<string, string>();
+        foreach (var drive in DriveInfo.GetDrives().Where(d => d.DriveType == DriveType.Removable && d.IsReady))
+            if (VolumeInfo.ReadSerial(drive.Name) is { } serial) present[drive.Name] = serial;
 
-        foreach (var (root, entry) in known.Where(k => !present.TryGetValue(k.Key, out var s) || s != k.Value.Serial).ToList())
+        foreach (var (root, _) in known.Where(k => !present.TryGetValue(k.Key, out var s) || s != k.Value.Serial).ToList())
         {
-            entry.Watcher.Dispose();
             known.Remove(root);
             CardChanged?.Invoke(root, null);
         }
         foreach (var (root, serial) in present.Where(p => !known.ContainsKey(p.Key)))
         {
-            known[root] = (serial, Watch(root));
+            known[root] = new Card(serial) { Imported = CardSignature.Of(root) };
             CardChanged?.Invoke(root, serial);
         }
     }
 
-    FileSystemWatcher Watch(string root)
+    async Task PollAsync()
     {
-        var watcher = new FileSystemWatcher(root, "*.gcode") { IncludeSubdirectories = true, EnableRaisingEvents = true };
-        FileSystemEventHandler changed = (_, _) => dispatcher.BeginInvoke(() => Debounce(root));
-        watcher.Created += changed;
-        watcher.Changed += changed;
-        watcher.Deleted += changed;
-        watcher.Error += (_, _) => dispatcher.BeginInvoke(RescanSoon);
-        return watcher;
-    }
-
-    // Slicers write gcode in bursts: wait for two quiet seconds before reading it.
-    void Debounce(string root)
-    {
-        if (!pending.TryGetValue(root, out var timer))
+        if (polling) return;
+        polling = true;
+        try
         {
-            timer = new DispatcherTimer(TimeSpan.FromSeconds(2), DispatcherPriority.Background, (s, _) =>
+            foreach (var (root, card) in known.ToList())
             {
-                ((DispatcherTimer)s!).Stop();
-                CardContentChanged?.Invoke(root);
-            }, dispatcher);
-            pending[root] = timer;
+                var now = await Task.Run(() => CardSignature.Of(root));
+                if (now is null || now == card.Imported)
+                {
+                    card.Pending = null;
+                    continue;
+                }
+                // Same change on two polls in a row: the slicer has finished writing.
+                if (now == card.Pending)
+                {
+                    card.Imported = now;
+                    card.Pending = null;
+                    CardContentChanged?.Invoke(root);
+                }
+                else card.Pending = now;
+            }
         }
-        timer.Stop();
-        timer.Start();
+        finally
+        {
+            polling = false;
+        }
     }
 
     public void Dispose()
     {
         rescan.Stop();
-        foreach (var timer in pending.Values) timer.Stop();
-        foreach (var entry in known.Values) entry.Watcher.Dispose();
+        poll.Stop();
     }
 }

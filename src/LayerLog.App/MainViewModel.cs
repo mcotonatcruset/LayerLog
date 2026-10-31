@@ -77,7 +77,7 @@ public sealed partial class MainViewModel : ObservableObject
             var noun = result.Added == 1 ? "gcode nou" : "gcode nous";
             ShowToast($"SD {serial}: {result.Added} {noun}", action: true);
         }
-        else if (result.Skipped > 0) ShowToast($"SD {serial}: {result.Skipped} fitxers no s'han pogut llegir", action: false);
+        else if (result.Interrupted) ShowToast($"SD {serial}: no s'ha pogut llegir tota la targeta", action: false);
     }
 
     void ShowToast(string text) => ShowToast(text, action: false);
