@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LayerLog.Core.Creality;
@@ -19,11 +20,15 @@ public sealed record FigurePrint(long GcodeId, string FileName, string Detail, B
 
 public sealed partial class ViewerViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<long> openEntry) : ObservableObject
 {
+    const string NoModels = "Aquesta carpeta no té cap model.";
     static readonly string[] BestKeys = ["layer_height", "wall_loops", "sparse_infill_density", "outer_wall_speed", "nozzle_temperature", "hot_plate_temp"];
 
     AppSettings settings = loaded;
     List<ModelFile> models = [];
     CancellationTokenSource? loading;
+    ModelWatcher? watcher;
+    string? shown;
+    bool refreshing, refreshAgain;
 
     public string? ModelFolder => settings.ModelFolder;
     public ObservableCollection<ExplorerNode> Nodes { get; } = [];
@@ -84,14 +89,66 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
 
     async Task OpenFolderAsync(string folder)
     {
+        if (shown is not null) ClearFigure(null);
+        Nodes.Clear();
         settings = settings with { ModelFolder = folder };
         Persist();
         FolderText = folder;
-        models = [.. await Task.Run(() => ModelLibrary.Scan(folder))];
-        Nodes.Clear();
-        foreach (var node in ExplorerNode.Build(models, UpdateSend)) Nodes.Add(node);
-        Message = models.Count == 0 ? "Aquesta carpeta no té cap model." : null;
-        await LinkModelsAsync();
+        watcher?.Dispose();
+        watcher = new ModelWatcher(folder, Dispatcher.CurrentDispatcher, RefreshOnChange);
+        await RefreshModelsAsync();
+    }
+
+    async void RefreshOnChange() => await RefreshModelsAsync();
+
+    async Task RefreshModelsAsync()
+    {
+        if (refreshing)
+        {
+            refreshAgain = true;
+            return;
+        }
+        refreshing = true;
+        try
+        {
+            do
+            {
+                refreshAgain = false;
+                var folder = ModelFolder!;
+                models = [.. await Task.Run(() => ModelLibrary.Scan(folder))];
+                ExplorerNode.Merge(Nodes, ExplorerNode.Build(models, UpdateSend));
+                UpdateSend();
+
+                if (shown is not null && models.All(m => m.RelativePath != shown)) ClearFigure("Aquest model ja no és a la carpeta.");
+                else if (models.Count == 0) Message = NoModels;
+                else if (Message == NoModels) Message = null;
+
+                await LinkModelsAsync();
+            }
+            while (refreshAgain);
+        }
+        finally
+        {
+            refreshing = false;
+        }
+    }
+
+    void ClearFigure(string? message)
+    {
+        loading?.Cancel();
+        shown = null;
+        settings = settings with { LastModel = null };
+        Persist();
+        IsLoading = false;
+        SelectedNode = null;
+        MeshChanged?.Invoke(null);
+        FigureName = null;
+        FileName = null;
+        SizeText = null;
+        BestProfile = null;
+        Prints.Clear();
+        BestRows.Clear();
+        Message = message;
     }
 
     void UpdateCounts()
@@ -132,6 +189,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
 
     async void Open(string relativePath)
     {
+        shown = relativePath;
         settings = settings with { LastModel = relativePath };
         Persist();
         UpdateFigure(relativePath);

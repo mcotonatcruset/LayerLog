@@ -23,6 +23,10 @@ public sealed partial class ExplorerNode(string name, string? relativePath, Acti
 
     public IEnumerable<ExplorerNode> Files() => IsFile ? [this] : Children.SelectMany(c => c.Files());
 
+    /// <summary>Updates a tree in place, so open folders, marks and the selection survive.</summary>
+    public static void Merge(IList<ExplorerNode> current, IReadOnlyList<ExplorerNode> wanted) =>
+        ListSync.Apply(current, wanted, (a, b) => a.Name == b.Name && a.IsFile == b.IsFile, (a, b) => Merge(a.Children, [.. b.Children]));
+
     public static List<ExplorerNode> Build(IEnumerable<ModelFile> models, Action onMarkedChanged)
     {
         var root = new ExplorerNode("", null, null);
