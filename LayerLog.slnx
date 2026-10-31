@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LayerLog.Core/LayerLog.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LayerLog.Core.Tests/LayerLog.Core.Tests.csproj" />
+  </Folder>
+</Solution>
