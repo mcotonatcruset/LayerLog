@@ -28,4 +28,6 @@ public sealed record GcodeEntry(
     IReadOnlyList<string> Objects,
     IReadOnlyList<string> VolumeSerials);
 
+public sealed record ObjectLink(string Name, string? ModelPath);
+
 public sealed record PrintRecord(long Id, long GcodeId, DateOnly Date, int? Rating, string Note, string? PhotoPath);

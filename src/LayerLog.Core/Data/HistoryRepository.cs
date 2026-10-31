@@ -83,6 +83,24 @@ public sealed class HistoryRepository
     public IReadOnlyList<GcodeEntry> ListForModel(string relativePath) =>
         Entries("WHERE EXISTS (SELECT 1 FROM gcode_object o WHERE o.gcode_id = g.id AND o.model_path = $0)", [relativePath]);
 
+    public IReadOnlyDictionary<string, int> ModelGcodeCounts()
+    {
+        using var c = Database.Open(path);
+        var counts = new Dictionary<string, int>();
+        using var r = Command(c, "SELECT model_path, COUNT(DISTINCT gcode_id) FROM gcode_object WHERE model_path IS NOT NULL GROUP BY model_path").ExecuteReader();
+        while (r.Read()) counts[r.GetString(0)] = r.GetInt32(1);
+        return counts;
+    }
+
+    public IReadOnlyList<ObjectLink> ObjectLinks(long gcodeId)
+    {
+        using var c = Database.Open(path);
+        var links = new List<ObjectLink>();
+        using var r = Command(c, "SELECT name, model_path FROM gcode_object WHERE gcode_id = $0 ORDER BY rowid", gcodeId).ExecuteReader();
+        while (r.Read()) links.Add(new ObjectLink(r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1)));
+        return links;
+    }
+
     public void LinkObject(long gcodeId, string objectName, string relativePath, string? fileHash, bool manual = true, long? size = null)
     {
         using var c = Database.Open(path);
