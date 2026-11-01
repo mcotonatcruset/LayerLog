@@ -34,7 +34,7 @@ public partial class ViewerView : UserControl
         Mesh.Material = new PhongMaterial
         {
             DiffuseColor = new Color4(0.9f, 0.87f, 0.8f, 1),
-            AmbientColor = new Color4(0.25f, 0.25f, 0.25f, 1),
+            AmbientColor = new Color4(0.9f, 0.87f, 0.8f, 1),
             SpecularColor = new Color4(0.12f, 0.12f, 0.12f, 1),
             SpecularShininess = 18,
         };
@@ -57,7 +57,8 @@ public partial class ViewerView : UserControl
 
     void OnTreeSelection(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if (model is not null) model.SelectedNode = e.NewValue as ExplorerNode;
+        // Only a figure changes what's open: the tree also moves its selection to folders and to nothing as rows collapse or results open.
+        if (model is not null && e.NewValue is ExplorerNode { IsFile: true } node) model.SelectedNode = node;
     }
 
     async void ShowMesh(StlMesh? mesh)
@@ -91,15 +92,15 @@ public partial class ViewerView : UserControl
         return new MeshGeometry3D { Positions = positions, Normals = normals, Indices = indices };
     }
 
-    // A pool of light on the floor: unlit, fading to the background colour at the rim.
+    // A soft pool of light on the floor: unlit, fading to the background colour at the rim.
     static MeshGeometry3D BuildFloor(float span)
     {
         const int Segments = 96;
         var rings = new (float Radius, Color4 Color)[]
         {
-            (0, new Color4(0.20f, 0.195f, 0.18f, 1)),
-            (span * 0.75f, new Color4(0.10f, 0.097f, 0.09f, 1)),
-            (span * 1.9f, new Color4(0.012f, 0.012f, 0.012f, 1)),
+            (0, new Color4(0.135f, 0.135f, 0.14f, 1)),
+            (span * 0.75f, new Color4(0.11f, 0.112f, 0.12f, 1)),
+            (span * 1.9f, new Color4(0.09f, 0.094f, 0.106f, 1)),
         };
         var positions = new Vector3Collection();
         var colors = new Color4Collection();
@@ -130,6 +131,7 @@ public partial class ViewerView : UserControl
         orbitRadius = span * 4.4;
         orbitHeight = span * 1.05;
         angle = 0.42;
+        camera.UpDirection = new Vector3D(0, 1, 0); // dragging the view tilts it, and a new figure starts level
         camera.FarPlaneDistance = span * 40;
         camera.NearPlaneDistance = span / 50;
         PlaceCamera();
