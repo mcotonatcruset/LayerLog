@@ -116,9 +116,7 @@ public sealed partial class HistoryViewModel(HistoryRepository repository, Photo
         var total = e.ProcessChanges.Count + e.FilamentChanges.Count;
         ChangesTitle = $"Què vas canviar ({total})";
         BaseMissing = e.BaseMissing;
-        Caution = e.BaseApproximate && e.BaseSourceVersion is not null
-            ? $"Comparació aproximada: no hi ha perfils de la versió {version}, s'ha fet servir la {e.BaseSourceVersion}."
-            : null;
+        Caution = AttemptText.Caution(e);
 
         Changes.Clear();
         AddGroup(e.ProcessProfile, e.ProcessChanges);

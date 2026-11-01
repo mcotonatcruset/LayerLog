@@ -99,7 +99,13 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     public bool Has(string relativePath) => !scanned || models.Any(m => m.RelativePath == relativePath);
 
     public string NameOf(string relativePath) =>
-        Cards.FirstOrDefault(c => c.Figure.RelativePath == relativePath)?.Figure.Name ?? Path.GetFileNameWithoutExtension(relativePath);
+        Cards.FirstOrDefault(c => c.Figure.RelativePath == relativePath)?.Figure.Name // no cards yet while a remembered figure opens
+        ?? repository.FigureMetas().GetValueOrDefault(relativePath)?.Alias
+        ?? Path.GetFileNameWithoutExtension(relativePath);
+
+    /// <summary>A figure's folder as shown to the user: the path inside the model folder, or that folder's name at its root.</summary>
+    public string FolderTitle(string folder) =>
+        folder.Length > 0 ? folder.Replace(Path.DirectorySeparatorChar.ToString(), " / ") : Path.GetFileName(ModelFolder!.TrimEnd(Path.DirectorySeparatorChar));
 
     public void RememberModel(string? relativePath)
     {
@@ -204,7 +210,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         var wanted = figures.GroupBy(f => f.Folder).Select(g => new CollectionSection(g.Key, g.Select(f => new FigureCard(f, UpdateSend)), UpdateRows)).ToList();
         ListSync.Apply(Sections, wanted, (a, b) => a.Folder == b.Folder,
             (a, b) => ListSync.Apply(a.Cards, b.Cards, (x, y) => x.Figure.RelativePath == y.Figure.RelativePath, (x, y) => x.Figure = y.Figure));
-        foreach (var section in Sections) section.Title = section.Folder.Length > 0 ? section.Folder.Replace(Path.DirectorySeparatorChar.ToString(), " / ") : Path.GetFileName(ModelFolder!.TrimEnd(Path.DirectorySeparatorChar));
+        foreach (var section in Sections) section.Title = FolderTitle(section.Folder);
 
         var cards = Cards.ToDictionary(c => c.Figure.RelativePath);
         ListSync.Apply(Recent, [.. FigureCatalog.Recent(figures, RecentCount).Select(f => cards[f.RelativePath])], ReferenceEquals);

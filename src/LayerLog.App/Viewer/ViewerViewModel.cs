@@ -1,27 +1,29 @@
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LayerLog.App.Collection;
+using LayerLog.App.History;
 using LayerLog.Core.Data;
 using LayerLog.Core.Models;
 using LayerLog.Core.Profiles;
 
 namespace LayerLog.App.Viewer;
 
-public sealed record SettingRow(string Label, string Value);
-public sealed record FigurePrint(long GcodeId, string FileName, string Detail, BitmapImage? Thumbnail);
+public sealed record AttemptRow(long GcodeId, string FileName, string Detail, string State, bool IsRated, string Spoken)
+{
+    public string Name => $"{FileName}, {Spoken}";
+}
 
 public sealed partial class ViewerViewModel(HistoryRepository repository, CollectionViewModel collection, Action<long> openEntry) : ObservableObject
 {
-    static readonly string[] BestKeys = ["layer_height", "wall_loops", "sparse_infill_density", "outer_wall_speed", "nozzle_temperature", "hot_plate_temp"];
+    const int KeyChangeCount = 4;
 
     CancellationTokenSource? loading;
     string? shown, shownFolder;
 
-    public ObservableCollection<SettingRow> BestRows { get; } = [];
-    public ObservableCollection<FigurePrint> Prints { get; } = [];
+    public ObservableCollection<ChangeRow> BestChanges { get; } = [];
+    public ObservableCollection<AttemptRow> Attempts { get; } = [];
 
     /// <summary>The loaded mesh, or null when nothing can be shown.</summary>
     public event Action<StlMesh?>? MeshChanged;
@@ -29,12 +31,18 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     [ObservableProperty] private string? message;
     [ObservableProperty] private bool isLoading;
     [ObservableProperty] private string? figureName;
-    [ObservableProperty] private string? fileName;
+    [ObservableProperty] private string? place;
     [ObservableProperty] private string? sizeText;
-    [ObservableProperty] private string? bestProfile;
+    [ObservableProperty] private bool hasAttempts;
+    [ObservableProperty] private string? attemptsTitle;
+    [ObservableProperty] private AttemptRow? selectedAttempt;
+    [ObservableProperty] private AttemptRow? bestAttempt;
     [ObservableProperty] private string? bestStars;
     [ObservableProperty] private string? bestSpoken;
-    [ObservableProperty] private bool hasPrints;
+    [ObservableProperty] private string? bestNote;
+    [ObservableProperty] private string? bestDetail;
+    [ObservableProperty] private string? bestCaution;
+    [ObservableProperty] private string? allChangesText;
 
     public void OnCollectionRefreshed()
     {
@@ -51,11 +59,9 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
         IsLoading = false;
         MeshChanged?.Invoke(null);
         FigureName = null;
-        FileName = null;
+        Place = null;
         SizeText = null;
-        BestProfile = null;
-        Prints.Clear();
-        BestRows.Clear();
+        ShowAttempts([]);
         Message = message;
     }
 
@@ -65,6 +71,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
         shown = relativePath;
         shownFolder = collection.ModelFolder;
         collection.RememberModel(relativePath);
+        SelectedAttempt = null;
         UpdateFigure(relativePath);
 
         loading?.Cancel();
@@ -104,34 +111,57 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
 
     void UpdateFigure(string relativePath)
     {
-        var entries = repository.ListForModel(relativePath);
         FigureName = collection.NameOf(relativePath);
-        FileName = Path.GetFileName(relativePath);
-        HasPrints = entries.Count > 0;
-
-        Prints.Clear();
-        foreach (var e in entries)
-        {
-            var count = repository.Prints(e.Id).Count;
-            var state = AttemptText.State(count);
-            Prints.Add(new FigurePrint(e.Id, e.FileName, $"{Dates.Short(e.GeneratedAt)} · {state}", Images.From(e.Thumbnail)));
-        }
-
-        BestRows.Clear();
-        var best = entries.Count > 0 ? repository.BestPrint(entries.Select(e => e.Id)) : null;
-        BestStars = best is null ? null : Stars.Text(best.Rating);
-        BestSpoken = best is null ? null : Stars.Spoken(best.Rating);
-        BestProfile = null;
-        if (best is null) return;
-
-        var entry = entries.First(e => e.Id == best.GcodeId);
-        BestProfile = Profiles.Short(entry.ProcessProfile);
-        foreach (var key in BestKeys.Where(entry.Config.ContainsKey))
-            BestRows.Add(new SettingRow(ConfigLabels.Label(key), ConfigLabels.Format(key, entry.Config[key].Split(',')[0])));
+        Place = $"{collection.FolderTitle(Path.GetDirectoryName(relativePath) ?? "")} · {Path.GetFileName(relativePath)}";
+        ShowAttempts(repository.ListForModel(relativePath));
     }
 
+    void ShowAttempts(IReadOnlyList<GcodeEntry> entries)
+    {
+        var rows = entries.Select(Row).ToList();
+        var best = entries.Count > 0 ? repository.BestPrint(entries.Select(e => e.Id)) : null;
+        var entry = entries.FirstOrDefault(e => e.Id == best?.GcodeId);
+        var others = rows.Where(r => r.GcodeId != entry?.Id).ToList();
+
+        HasAttempts = entries.Count > 0;
+        BestAttempt = rows.FirstOrDefault(r => r.GcodeId == entry?.Id);
+        SelectedAttempt = rows.FirstOrDefault(r => r.GcodeId == SelectedAttempt?.GcodeId);
+        AttemptsTitle = others.Count == 0 ? null : best is null ? "Intents" : "Altres intents";
+        Attempts.Clear();
+        foreach (var row in others) Attempts.Add(row);
+
+        BestChanges.Clear();
+        BestStars = best is null ? null : Stars.Text(best.Rating);
+        BestSpoken = best is null ? null : Stars.Spoken(best.Rating);
+        BestNote = string.IsNullOrWhiteSpace(best?.Note) ? null : best.Note.Trim();
+        BestDetail = entry is null ? null : $"{entry.FileName} · {Dates.Short(best!.Date)} · {Profiles.Short(entry.ProcessProfile)}";
+        BestCaution = entry is null ? null : AttemptText.Caution(entry);
+        AllChangesText = null;
+        if (entry is null) return;
+
+        var changes = entry.ProcessChanges.Concat(entry.FilamentChanges).ToList();
+        foreach (var c in KeyChanges.Pick(changes, KeyChangeCount))
+            BestChanges.Add(new ChangeRow(ConfigLabels.Label(c.Key), ConfigLabels.Format(c.Key, c.Base), ConfigLabels.Format(c.Key, c.Value)));
+        AllChangesText = changes.Count switch { 0 => "Veure l'intent", 1 => "Veure el canvi", var n => $"Tots els {n} canvis" };
+    }
+
+    AttemptRow Row(GcodeEntry e)
+    {
+        var prints = repository.Prints(e.Id);
+        var rating = prints.Max(p => p.Rating);
+        var state = AttemptText.State(prints.Count);
+        var parts = new[] { Dates.Short(e.GeneratedAt), Profiles.Short(e.ProcessProfile), e.EstimatedTime, e.FilamentGrams is { } g ? $"{g:0} g" : null };
+        return new AttemptRow(e.Id, e.FileName, string.Join(" · ", parts.OfType<string>()), rating is null ? state : Stars.Text(rating), rating is not null,
+            rating is null ? state : Stars.Spoken(rating));
+    }
+
+    // ponytail: the attempt opens in the history until the panel can show it (Task 8)
     [RelayCommand]
-    void OpenPrint(FigurePrint print) => openEntry(print.GcodeId);
+    void SelectAttempt(AttemptRow row)
+    {
+        SelectedAttempt = row;
+        openEntry(row.GcodeId);
+    }
 
     [RelayCommand]
     void Send()

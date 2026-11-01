@@ -135,8 +135,6 @@
         <StackPanel Margin="0,26,0,0">
           <TextBlock Text="{Binding ChangesTitle}" Style="{StaticResource H2}"/>
           <TextBlock Text="{Binding Caution}" Style="{StaticResource MutedText}" Visibility="{Binding Caution, Converter={StaticResource NullToCollapsed}}"/>
-          <TextBlock Text="No s'ha trobat algun perfil base: mira la configuració completa." Style="{StaticResource MutedText}"
-                     Visibility="{Binding BaseMissing, Converter={StaticResource BoolToVisible}}"/>
           <ItemsControl ItemsSource="{Binding Changes}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
