@@ -8,7 +8,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListBoxItem">
-            <Border x:Name="B" CornerRadius="6" Padding="8" Background="Transparent">
+            <Border x:Name="B" CornerRadius="6" Padding="6" BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
@@ -16,7 +16,10 @@
                 <Setter TargetName="B" Property="Background" Value="{StaticResource Hover}"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="B" Property="Background" Value="{StaticResource Selected}"/>
+                <Setter TargetName="B" Property="Background" Value="{StaticResource Raised}"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="B" Property="BorderBrush" Value="{StaticResource Ink}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>
@@ -24,7 +27,7 @@
       </Setter>
     </Style>
     <Style x:Key="Rule" TargetType="Border">
-      <Setter Property="BorderBrush" Value="{StaticResource Surface2}"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Raised}"/>
       <Setter Property="BorderThickness" Value="0,0,0,1"/>
       <Setter Property="Padding" Value="0,4"/>
     </Style>
@@ -171,7 +174,7 @@
           <ItemsControl ItemsSource="{Binding Prints}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
-                <Border BorderBrush="{StaticResource Surface2}" BorderThickness="0,0,0,1" Padding="0,10">
+                <Border BorderBrush="{StaticResource Raised}" BorderThickness="0,0,0,1" Padding="0,10">
                   <StackPanel>
                     <DockPanel>
                       <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Esborrar" Command="{Binding DeleteCommand}" Margin="16,0,0,0" VerticalAlignment="Center"/>
@@ -181,20 +184,20 @@
                           <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                             <Style.Triggers>
                               <DataTrigger Binding="{Binding DateInvalid}" Value="True">
-                                <Setter Property="BorderBrush" Value="{StaticResource PrimaryText}"/>
+                                <Setter Property="BorderBrush" Value="{StaticResource Ink}"/>
                               </DataTrigger>
                             </Style.Triggers>
                           </Style>
                         </TextBox.Style>
                       </TextBox>
-                      <TextBlock DockPanel.Dock="Left" Text="Data no vàlida" Foreground="{StaticResource PrimaryText}" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0" Visibility="{Binding DateInvalid, Converter={StaticResource BoolToVisible}}"/>
+                      <TextBlock DockPanel.Dock="Left" Text="Data no vàlida" Foreground="{StaticResource Ink}" FontSize="13" VerticalAlignment="Center" Margin="10,0,0,0" Visibility="{Binding DateInvalid, Converter={StaticResource BoolToVisible}}"/>
                       <ItemsControl ItemsSource="{Binding Choices}" VerticalAlignment="Center" Margin="16,0,8,0">
                         <ItemsControl.ItemsPanel>
                           <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                            <Button Style="{StaticResource LinkButton}" Content="{Binding Glyph}" Foreground="{StaticResource Ivory}" FontSize="16" Margin="0,0,2,0"
+                            <Button Style="{StaticResource LinkButton}" Content="{Binding Glyph}" Foreground="{StaticResource Change}" FontSize="16" Margin="0,0,2,0"
                                     AutomationProperties.Name="{Binding Spoken}"
                                     Command="{Binding DataContext.RateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}"/>
                           </DataTemplate>

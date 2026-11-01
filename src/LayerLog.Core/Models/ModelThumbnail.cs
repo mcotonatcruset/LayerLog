@@ -3,7 +3,9 @@ namespace LayerLog.Core.Models;
 /// <summary>Draws a mesh with a small software rasterizer, so thumbnails need no GPU or window.</summary>
 public static class ModelThumbnail
 {
-    public const int Size = 128;
+    public const int Size = 320;
+    /// <summary>The figures' material, shared with the 3D view.</summary>
+    public static readonly (float R, float G, float B) Ivory = (0.9f, 0.87f, 0.8f);
     const float Turn = 0.42f, Tilt = 0.3f, Margin = 2;
     static readonly (float X, float Y, float Z) Light = (0.32f, 0.76f, 0.56f);
 
@@ -88,6 +90,6 @@ public static class ModelThumbnail
         // y grew downwards here, because the screen flip already happened
         var lit = (nx * Light.X - ny * Light.Y + nz * Light.Z) / length;
         var shade = 0.42f + 0.58f * MathF.Max(0, lit);
-        return ((byte)(231 * shade), (byte)(221 * shade), (byte)(200 * shade));
+        return ((byte)(255 * Ivory.R * shade), (byte)(255 * Ivory.G * shade), (byte)(255 * Ivory.B * shade));
     }
 }

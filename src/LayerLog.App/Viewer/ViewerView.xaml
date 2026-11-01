@@ -8,7 +8,7 @@
     <!-- The file type shows until the picture is ready, and stays for 3MF and unreadable files -->
     <DataTemplate x:Key="FigureThumb" DataType="viewer:ExplorerNode">
       <Grid Width="40" Height="40">
-        <Border Background="{StaticResource Surface2}" CornerRadius="4" Opacity="0.6"/>
+        <Border Background="{StaticResource Raised}" CornerRadius="4" Opacity="0.6"/>
         <TextBlock Text="{Binding Extension}" Foreground="{StaticResource Muted}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center">
           <TextBlock.Style>
             <Style TargetType="TextBlock">
@@ -41,7 +41,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="TreeViewItem">
             <StackPanel>
-              <Border x:Name="Row" CornerRadius="5" Padding="6,4" Background="Transparent">
+              <Border x:Name="Row" CornerRadius="5" Padding="4,2" BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
                 <Grid>
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="16"/>
@@ -69,8 +69,11 @@
               <Trigger Property="IsMouseOver" SourceName="Row" Value="True">
                 <Setter TargetName="Row" Property="Background" Value="{StaticResource Hover}"/>
               </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Ink}"/>
+              </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="Row" Property="Background" Value="{StaticResource Selected}"/>
+                <Setter TargetName="Row" Property="Background" Value="{StaticResource Raised}"/>
                 <Setter Property="Foreground" Value="{StaticResource Ink}"/>
               </Trigger>
             </ControlTemplate.Triggers>
@@ -81,7 +84,7 @@
   </UserControl.Resources>
 
   <Grid>
-    <hx:Viewport3DX x:Name="View" BackgroundColor="#17181B" ShowCoordinateSystem="False" ShowViewCube="False" EnableSwapChainRendering="False"
+    <hx:Viewport3DX x:Name="View" BackgroundColor="#233D47" ShowCoordinateSystem="False" ShowViewCube="False" EnableSwapChainRendering="False"
                     FXAALevel="Low" CameraRotationMode="Turntable" ZoomExtentsWhenLoaded="False" IsChangeFieldOfViewEnabled="False"
                     AutomationProperties.Name="Vista 3D de la figura">
       <hx:Viewport3DX.InputBindings>
@@ -92,41 +95,39 @@
       <hx:AmbientLight3D Color="#6A6A6A"/>
       <hx:DirectionalLight3D Color="#5A5854" Direction="-0.25,-1,-0.35"/>
       <hx:DirectionalLight3D Color="#3C3C40" Direction="{Binding Camera.LookDirection, ElementName=View}"/>
-      <hx:MeshGeometryModel3D x:Name="Floor"/>
+      <hx:ScreenQuadModel3D x:Name="Sweep"/>
+      <hx:MeshGeometryModel3D x:Name="ContactShadow" IsTransparent="True"/>
       <hx:MeshGeometryModel3D x:Name="Mesh" CullMode="Back"/>
     </hx:Viewport3DX>
 
-    <!-- Soft fades keep the side text readable when a zoomed model passes behind it -->
-    <Rectangle HorizontalAlignment="Left" Width="420" IsHitTestVisible="False">
-      <Rectangle.Fill>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-          <GradientStop Color="#C017181B" Offset="0"/>
-          <GradientStop Color="#9017181B" Offset="0.7"/>
-          <GradientStop Color="#0017181B" Offset="1"/>
-        </LinearGradientBrush>
-      </Rectangle.Fill>
-    </Rectangle>
-    <Rectangle HorizontalAlignment="Right" Width="420" IsHitTestVisible="False">
-      <Rectangle.Fill>
-        <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
-          <GradientStop Color="#C017181B" Offset="0"/>
-          <GradientStop Color="#9017181B" Offset="0.7"/>
-          <GradientStop Color="#0017181B" Offset="1"/>
-        </LinearGradientBrush>
-      </Rectangle.Fill>
-    </Rectangle>
-
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="340" IsHitTestVisible="False" Effect="{StaticResource SceneShadow}">
-      <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}" TextAlignment="Center" FontSize="14"
-                 Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}"/>
-      <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisible}}">
-        <TextBlock Text="Carregant el model" Style="{StaticResource MutedText}" TextAlignment="Center"/>
-        <ProgressBar IsIndeterminate="True" Height="3" Width="180" Margin="0,10,0,0" Foreground="{StaticResource Ivory}" Background="{StaticResource Line}" BorderThickness="0"/>
+    <!-- Opaque, because the sweep is too light behind Muted text at its centre -->
+    <Border HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="340" Padding="14,10" CornerRadius="8" IsHitTestVisible="False"
+            Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Style.Triggers>
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding Message}" Value="{x:Null}"/>
+                <Condition Binding="{Binding IsLoading}" Value="False"/>
+              </MultiDataTrigger.Conditions>
+              <Setter Property="Visibility" Value="Collapsed"/>
+            </MultiDataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <StackPanel>
+        <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}" TextAlignment="Center" FontSize="14"
+                   Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}"/>
+        <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisible}}">
+          <TextBlock Text="Carregant el model" Style="{StaticResource MutedText}" TextAlignment="Center"/>
+          <ProgressBar IsIndeterminate="True" Height="3" Width="180" Margin="0,10,0,0" Foreground="{StaticResource Ink}" Background="{StaticResource Line}" BorderThickness="0"/>
+        </StackPanel>
       </StackPanel>
-    </StackPanel>
+    </Border>
 
     <!-- Explorer: text on the scene itself, with no container behind it -->
-    <DockPanel HorizontalAlignment="Left" Width="320" Margin="12,56,0,20">
+    <DockPanel HorizontalAlignment="Left" Width="320" Margin="12,60,0,20">
       <DockPanel DockPanel.Dock="Top" Margin="8,0,8,8" Effect="{StaticResource SceneShadow}">
         <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Canviar" Command="{Binding ChangeFolderCommand}" AutomationProperties.Name="Canviar la carpeta de models"/>
         <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Plegar" Command="{Binding CollapseAllCommand}" Margin="0,0,10,0" AutomationProperties.Name="Plegar totes les carpetes" ToolTip="Plegar totes les carpetes"/>
@@ -171,7 +172,7 @@
                     <Style TargetType="Border">
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                          <Setter Property="Background" Value="{StaticResource Selected}"/>
+                          <Setter Property="Background" Value="{StaticResource Raised}"/>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>

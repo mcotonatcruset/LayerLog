@@ -1,27 +1,36 @@
-﻿<Window x:Class="LayerLog.App.MainWindow"
+<Window x:Class="LayerLog.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:viewer="clr-namespace:LayerLog.App.Viewer"
         xmlns:history="clr-namespace:LayerLog.App.History"
         Title="LayerLog" Width="1500" Height="900" MinWidth="1100" MinHeight="700"
-        Background="{StaticResource Bg}" Foreground="{StaticResource Ink}"
-        FontFamily="{StaticResource UiFont}" FontSize="14" TextOptions.TextFormattingMode="Ideal">
-  <Grid>
-    <viewer:ViewerView DataContext="{Binding Viewer}"
+        Background="{StaticResource Sweep}" Foreground="{StaticResource Ink}"
+        FontFamily="{StaticResource UiFont}" FontSize="14" Typography.NumeralAlignment="Tabular" TextOptions.TextFormattingMode="Ideal">
+  <WindowChrome.WindowChrome>
+    <WindowChrome CaptionHeight="52" ResizeBorderThickness="6" GlassFrameThickness="0,0,0,1" CornerRadius="0" UseAeroCaptionButtons="False"/>
+  </WindowChrome.WindowChrome>
+  <Grid x:Name="Root">
+    <viewer:ViewerView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding Viewer}"
                        Visibility="{Binding DataContext.ShowViewer, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
-    <history:HistoryView DataContext="{Binding History}" Margin="0,48,0,0"
+    <history:HistoryView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding History}" Margin="0,52,0,0"
                          Visibility="{Binding DataContext.ShowViewer, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NotBoolToVisible}}"/>
 
-    <DockPanel VerticalAlignment="Top" Height="48" Margin="20,0" LastChildFill="False" Effect="{StaticResource SceneShadow}">
+    <!-- Last child so it draws on top; TabIndex (on Local groups, else ignored) makes Tab reach the tabs first -->
+    <DockPanel KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="0" VerticalAlignment="Top" Height="52" Margin="20,0,0,0" LastChildFill="False" Effect="{StaticResource SceneShadow}">
       <TextBlock Text="LayerLog" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0"/>
-      <RadioButton Style="{StaticResource TabButton}" Content="Visor" IsChecked="{Binding ShowViewer}" GroupName="Tabs" VerticalAlignment="Center"/>
+      <RadioButton Style="{StaticResource TabButton}" Content="Visor" IsChecked="{Binding ShowViewer}" GroupName="Tabs" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True"/>
       <RadioButton Style="{StaticResource TabButton}" Content="Historial" GroupName="Tabs" VerticalAlignment="Center" Margin="4,0,0,0"
-                   IsChecked="{Binding ShowHistory}"/>
-      <TextBlock DockPanel.Dock="Right" Text="{Binding CardStatus}" Style="{StaticResource MutedText}" VerticalAlignment="Center"/>
+                   IsChecked="{Binding ShowHistory}" WindowChrome.IsHitTestVisibleInChrome="True"/>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+        <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimitzar" AutomationProperties.Name="Minimitzar"/>
+        <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="OnMaximize" ToolTip="Maximitzar" AutomationProperties.Name="Maximitzar"/>
+        <Button Style="{StaticResource CaptionButton}" Content="&#xE8BB;" Click="OnClose" ToolTip="Tancar" AutomationProperties.Name="Tancar"/>
+      </StackPanel>
+      <TextBlock DockPanel.Dock="Right" Text="{Binding CardStatus}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
     </DockPanel>
 
     <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" Padding="14,10" CornerRadius="8"
-            Background="{StaticResource Surface2}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+            Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1"
             Visibility="{Binding Toast, Converter={StaticResource NullToCollapsed}}">
       <StackPanel Orientation="Horizontal">
         <TextBlock Text="{Binding Toast}" AutomationProperties.LiveSetting="Polite"/>
