@@ -53,6 +53,17 @@ static class Database
         PRAGMA user_version = 2;
         """;
 
+    const string FigureMeta = """
+        CREATE TABLE figure_meta (
+            relative_path TEXT PRIMARY KEY,
+            model_hash TEXT NOT NULL,
+            model_size INTEGER NOT NULL,
+            alias TEXT,
+            is_part INTEGER NOT NULL DEFAULT 0
+        );
+        PRAGMA user_version = 3;
+        """;
+
     public static SqliteConnection Open(string path)
     {
         var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
@@ -68,6 +79,7 @@ static class Database
         var version = Convert.ToInt32(read.ExecuteScalar());
         if (version < 1) Execute(connection, Schema);
         if (version < 2) Execute(connection, ModelLinks);
+        if (version < 3) Execute(connection, FigureMeta);
     }
 
     static void Execute(SqliteConnection connection, string sql)

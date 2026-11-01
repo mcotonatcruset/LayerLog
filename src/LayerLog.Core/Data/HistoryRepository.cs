@@ -130,13 +130,42 @@ public sealed class HistoryRepository
         var links = new List<(string Path, string Hash, long Size)>();
         using (var r = Command(c, "SELECT DISTINCT model_path, model_hash, model_size FROM gcode_object WHERE model_hash IS NOT NULL AND model_size IS NOT NULL").ExecuteReader())
             while (r.Read()) links.Add((r.GetString(0), r.GetString(1), r.GetInt64(2)));
+        var metaLinks = new List<(string Path, string Hash, long Size)>();
+        using (var r = Command(c, "SELECT relative_path, model_hash, model_size FROM figure_meta").ExecuteReader())
+            while (r.Read()) metaLinks.Add((r.GetString(0), r.GetString(1), r.GetInt64(2)));
 
-        foreach (var link in links.Where(l => !File.Exists(Path.Combine(root, l.Path))))
+        foreach (var link in links.Concat(metaLinks).Where(l => !File.Exists(Path.Combine(root, l.Path))).DistinctBy(l => l.Path))
         {
             var moved = models.FirstOrDefault(m => m.Size == link.Size && ModelLibrary.HashFile(Path.Combine(root, m.RelativePath)) == link.Hash);
-            if (moved is not null)
-                Command(c, "UPDATE gcode_object SET model_path = $0 WHERE model_path = $1", moved.RelativePath, link.Path).ExecuteNonQuery();
+            if (moved is null) continue;
+            Command(c, "UPDATE gcode_object SET model_path = $0 WHERE model_path = $1", moved.RelativePath, link.Path).ExecuteNonQuery();
+            Command(c, "UPDATE OR IGNORE figure_meta SET relative_path = $0 WHERE relative_path = $1", moved.RelativePath, link.Path).ExecuteNonQuery();
         }
+    }
+
+    public IReadOnlyDictionary<string, FigureMeta> FigureMetas()
+    {
+        using var c = Database.Open(path);
+        var metas = new Dictionary<string, FigureMeta>();
+        using var r = Command(c, "SELECT relative_path, alias, is_part FROM figure_meta").ExecuteReader();
+        while (r.Read()) metas[r.GetString(0)] = new FigureMeta(r.GetString(0), r.IsDBNull(1) ? null : r.GetString(1), r.GetBoolean(2));
+        return metas;
+    }
+
+    public void SetAlias(string relativePath, string hash, long size, string? alias) =>
+        Upsert("alias", relativePath, hash, size, string.IsNullOrWhiteSpace(alias) ? null : alias.Trim());
+
+    public void SetIsPart(string relativePath, string hash, long size, bool isPart) =>
+        Upsert("is_part", relativePath, hash, size, isPart);
+
+    // column is always one of the two literals above, never user input
+    void Upsert(string column, string relativePath, string hash, long size, object? value)
+    {
+        using var c = Database.Open(path);
+        Command(c, $"""
+            INSERT INTO figure_meta (relative_path, model_hash, model_size, {column}) VALUES ($0, $1, $2, $3)
+            ON CONFLICT (relative_path) DO UPDATE SET model_hash = $1, model_size = $2, {column} = $3
+            """, relativePath, hash, size, value).ExecuteNonQuery();
     }
 
     List<(long GcodeId, string Name)> UnlinkedObjects()
