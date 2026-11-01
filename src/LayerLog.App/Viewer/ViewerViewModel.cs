@@ -28,14 +28,15 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     /// <summary>The loaded mesh, or null when nothing can be shown.</summary>
     public event Action<StlMesh?>? MeshChanged;
 
-    [ObservableProperty] private string? message;
-    [ObservableProperty] private bool isLoading;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowSummary), nameof(ShowOrphan))] private string? figureName;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(SceneMessage))] private string? message;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowLoading))] private bool isLoading;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowOrphan), nameof(SceneMessage), nameof(ShowLoading))] private string? orphanText;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowSummary))] private string? figureName;
     [ObservableProperty] private string? place;
     [ObservableProperty] private string? sizeText;
     [ObservableProperty] private bool hasAttempts;
     [ObservableProperty] private string? attemptsTitle;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowSummary), nameof(ShowOrphan))] private AttemptRow? selectedAttempt;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowSummary))] private AttemptRow? selectedAttempt;
     [ObservableProperty] private AttemptRow? bestAttempt;
     [ObservableProperty] private string? bestStars;
     [ObservableProperty] private string? bestSpoken;
@@ -45,14 +46,24 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     [ObservableProperty] private string? allChangesText;
 
     public bool ShowSummary => FigureName is not null && SelectedAttempt is null;
-    public bool ShowOrphan => FigureName is null && SelectedAttempt is not null;
+    /// <summary>A gcode opened on its own. Any figure stays loaded and remembered behind it, out of the scene.</summary>
+    public bool ShowOrphan => OrphanText is not null;
+    public string? SceneMessage => OrphanText ?? Message;
+    public bool ShowLoading => IsLoading && !ShowOrphan;
 
     public void OnCollectionRefreshed()
     {
-        if (shown is null) return;
-        if (shownFolder != collection.ModelFolder || !collection.Has(shown)) ClearFigure("Aquest model ja no és a la carpeta.");
-        else UpdateFigure(shown);
+        if (shown is not null)
+        {
+            if (shownFolder != collection.ModelFolder || !collection.Has(shown)) ClearFigure("Aquest model ja no és a la carpeta.");
+            else UpdateFigure(shown);
+        }
+        if (SelectedAttempt is null) return;
+        attempt.Refresh();
+        if (ShowOrphan) OrphanText = OrphanMessage();
     }
+
+    string OrphanMessage() => attempt.HasFigure ? "Aquest gcode ja té una figura." : "Aquest gcode no té cap figura assignada.";
 
     void ClearFigure(string? message)
     {
@@ -70,8 +81,13 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
 
     public async void Open(string relativePath)
     {
+        OrphanText = null;
         SelectedAttempt = null;
-        if (relativePath == shown) return;
+        if (relativePath == shown)
+        {
+            UpdateFigure(relativePath); // the same figure may have just gained an attempt
+            return;
+        }
         shown = relativePath;
         shownFolder = collection.ModelFolder;
         collection.RememberModel(relativePath);
@@ -128,7 +144,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
 
         HasAttempts = entries.Count > 0;
         BestAttempt = rows.FirstOrDefault(r => r.GcodeId == entry?.Id);
-        SelectedAttempt = rows.FirstOrDefault(r => r.GcodeId == SelectedAttempt?.GcodeId);
+        if (!ShowOrphan) SelectedAttempt = rows.FirstOrDefault(r => r.GcodeId == SelectedAttempt?.GcodeId);
         AttemptsTitle = others.Count == 0 ? null : best is null ? "Intents" : "Altres intents";
         Attempts.Clear();
         foreach (var row in others) Attempts.Add(row);
@@ -168,8 +184,8 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     /// <summary>A gcode with no figure: the panel opens on an empty scene.</summary>
     public void OpenOrphan(long gcodeId)
     {
-        ClearFigure("Aquest gcode no té cap figura assignada.");
         attempt.Show(gcodeId);
+        OrphanText = OrphanMessage();
         SelectedAttempt = Row(repository.Get(gcodeId));
     }
 
@@ -177,6 +193,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     public async void CloseAttempt()
     {
         if (SelectedAttempt is null) return;
+        OrphanText = null;
         SelectedAttempt = null;
         await collection.UpdateFiguresAsync();
     }

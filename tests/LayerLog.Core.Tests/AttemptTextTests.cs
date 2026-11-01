@@ -56,4 +56,12 @@ public class AttemptTextTests
 
         Assert.Equal(["layer_height", "travel_speed"], picked);
     }
+
+    [Theory]
+    [InlineData(null, "", null, "Vols esborrar aquesta impressió? No es pot desfer.")]
+    [InlineData(4, "  ", null, "Vols esborrar aquesta impressió? Es perdrà la valoració. No es pot desfer.")]
+    [InlineData(null, "nota", null, "Vols esborrar aquesta impressió? Es perdrà la nota. No es pot desfer.")]
+    [InlineData(4, "nota", "f.png", "Vols esborrar aquesta impressió? Es perdran la valoració i la nota. El fitxer de la foto es queda al disc. No es pot desfer.")]
+    public void Delete_warning_names_only_what_there_is(int? rating, string note, string? photo, string expected) =>
+        Assert.Equal(expected, AttemptText.DeleteWarning(new PrintRecord(1, 1, new DateOnly(2026, 1, 1), rating, note, photo)));
 }

@@ -88,7 +88,8 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - Mateix lloc i amplada que el panell de figura, que substitueix quan s'obre un intent. «Tornar» queda fix a dalt; Esc fa el mateix.
 - Ordre: gcode, altres figures, «Què vas canviar», impressions i configuració completa plegada. Els canvis fan servir les mateixes files que el panell de figura.
 - Un gcode sense figura s'obre igual, amb l'escena buida i la píndola «Aquest gcode no té cap figura assignada.» amb el botó «Assignar model». En assignar-lo, s'obre la figura.
-- Esborrar una impressió demana confirmació amb Cancel·lar per defecte.
+- La figura oberta i la recordada no canvien: Esc hi torna, o a Col·lecció si no n'hi havia.
+- Esborrar una impressió es confirma a la mateixa fila: un text amb el que es perd, i «Cancel·lar» amb el focus. Esc cancel·la.
 
 ## Miniatures
 

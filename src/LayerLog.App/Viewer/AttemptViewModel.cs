@@ -31,6 +31,7 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
 {
     long gcodeId;
     string? figure;
+    List<(ObjectLink Link, bool IsLinked)>? shownLinks;
 
     public ObservableCollection<ChangeGroup> Changes { get; } = [];
     public ObservableCollection<PrintRow> Prints { get; } = [];
@@ -43,6 +44,7 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     [ObservableProperty] private string? caution;
     [ObservableProperty] private string? figuresTitle;
     [ObservableProperty] private bool canAssign;
+    [ObservableProperty] private bool hasFigure;
     [ObservableProperty] private bool hasPrints;
     [ObservableProperty] private bool showFullConfig;
     [ObservableProperty] private string? fullConfigTitle;
@@ -54,13 +56,11 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     {
         this.gcodeId = gcodeId;
         figure = openFigure;
+        shownLinks = null;
         var e = repository.Get(gcodeId);
         FileName = e.FileName;
         Thumbnail = Images.From(e.Thumbnail);
-        var version = string.Join('.', e.Version.Split('.').Take(2));
-        var grams = e.FilamentGrams is { } g ? $" · {g:0} g" : "";
-        var time = e.EstimatedTime is null ? "" : $" · {e.EstimatedTime}";
-        NoteMeta = $"{Dates.Short(e.GeneratedAt)} · Creality Print {version}{time}{grams}\n{CardText(e)}";
+        ShowMeta(e);
 
         var total = e.ProcessChanges.Count + e.FilamentChanges.Count;
         ChangesTitle = $"Què vas canviar ({total})";
@@ -78,6 +78,21 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
         LoadPrints();
     }
 
+    /// <summary>An import or a scan may have moved its cards or links. Prints stay: rebuilding them would take the focus from a note being typed.</summary>
+    public void Refresh()
+    {
+        ShowMeta(repository.Get(gcodeId));
+        LoadFigures();
+    }
+
+    void ShowMeta(GcodeEntry e)
+    {
+        var version = string.Join('.', e.Version.Split('.').Take(2));
+        var grams = e.FilamentGrams is { } g ? $" · {g:0} g" : "";
+        var time = e.EstimatedTime is null ? "" : $" · {e.EstimatedTime}";
+        NoteMeta = $"{Dates.Short(e.GeneratedAt)} · Creality Print {version}{time}{grams}\n{CardText(e)}";
+    }
+
     static string CardText(GcodeEntry e) =>
         e.VolumeSerials.Count == 0 ? "Ja no és a cap SD" : string.Join(", ", e.VolumeSerials.Select(s => $"SD {s}"));
 
@@ -91,30 +106,41 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     // A link to a model that's gone counts as unlinked: that's how a gcode lands in «Sense figura», and it needs assigning again.
     void LoadFigures()
     {
+        var links = repository.ObjectLinks(gcodeId).Where(l => l.ModelPath is null || l.ModelPath != figure)
+            .Select(l => (Link: l, IsLinked: l.ModelPath is { } path && collection.Has(path))).ToList();
+        if (shownLinks is not null && links.SequenceEqual(shownLinks)) return; // unchanged rows keep the keyboard focus
+        shownLinks = links;
         Figures.Clear();
-        foreach (var link in repository.ObjectLinks(gcodeId).Where(l => l.ModelPath is null || l.ModelPath != figure))
-            Figures.Add(new FigureLink(this, link, link.ModelPath is { } path && collection.Has(path)));
+        foreach (var (link, isLinked) in links) Figures.Add(new FigureLink(this, link, isLinked));
         FiguresTitle = Figures.Count == 0 ? null : figure is null ? "Figures" : "Altres figures";
-        CanAssign = Figures.Any(f => !f.IsLinked);
+        HasFigure = Figures.Any(f => f.IsLinked);
+        CanAssign = Figures.Count > 0 && !HasFigure;
     }
 
     void LoadPrints()
     {
         Prints.Clear();
-        foreach (var p in repository.Prints(gcodeId)) Prints.Add(new PrintRow(p, repository, photos, PrintsChanged));
+        foreach (var p in repository.Prints(gcodeId)) Prints.Add(Row(p));
         HasPrints = Prints.Count > 0;
     }
 
-    async void PrintsChanged()
+    PrintRow Row(PrintRecord p) => new(p, repository, photos, PrintsChanged, PrintDeleted);
+
+    async void PrintsChanged() => await collection.UpdateFiguresAsync();
+
+    void PrintDeleted(PrintRow row)
     {
-        LoadPrints();
-        await collection.UpdateFiguresAsync();
+        Prints.Remove(row);
+        HasPrints = Prints.Count > 0;
+        PrintsChanged();
     }
 
     [RelayCommand]
     void AddPrint()
     {
-        repository.AddPrint(gcodeId, DateOnly.FromDateTime(DateTime.Today), null, "", null);
+        var id = repository.AddPrint(gcodeId, DateOnly.FromDateTime(DateTime.Today), null, "", null);
+        Prints.Insert(0, Row(repository.Prints(gcodeId).First(p => p.Id == id))); // in place, so a half-typed date on another row survives
+        HasPrints = true;
         PrintsChanged();
     }
 
@@ -128,7 +154,11 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
 
     public async Task AssignFigure(string objectName)
     {
-        if (collection.ModelFolder is not { } folder) return;
+        if (collection.ModelFolder is not { } folder)
+        {
+            toast("Tria primer una carpeta de models.");
+            return;
+        }
         var dialog = new OpenFileDialog { Title = $"Quin model és {objectName}?", InitialDirectory = folder, Filter = "Models|*.stl;*.3mf" };
         if (dialog.ShowDialog() != true) return;
 

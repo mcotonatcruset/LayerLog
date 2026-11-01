@@ -50,7 +50,12 @@ public partial class ViewerView : UserControl
         DataContextChanged += (_, e) =>
         {
             model = e.NewValue as ViewerViewModel;
-            if (model is not null) model.MeshChanged += ShowMesh;
+            if (model is null) return;
+            model.MeshChanged += ShowMesh;
+            model.PropertyChanged += (_, a) =>
+            {
+                if (a.PropertyName == nameof(ViewerViewModel.ShowOrphan)) Mesh.IsRendering = ContactShadow.IsRendering = !model.ShowOrphan;
+            };
         };
         IsVisibleChanged += (_, e) =>
         {

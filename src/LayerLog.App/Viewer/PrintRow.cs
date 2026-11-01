@@ -1,39 +1,58 @@
 using System.IO;
-using System.Windows;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LayerLog.Core.Data;
+using LayerLog.Core.Models;
 using Microsoft.Win32;
 
 namespace LayerLog.App.Viewer;
 
-public sealed record StarChoice(int Value, string Glyph, string Spoken);
+// Stable items whose glyph changes: replacing them would take the keyboard focus off the star.
+public sealed partial class StarChoice(int value) : ObservableObject
+{
+    public int Value { get; } = value;
+    public string Spoken { get; } = $"Valorar amb {value} de 5";
+
+    [ObservableProperty] private string glyph = "☆";
+}
 
 public sealed partial class PrintRow : ObservableObject
 {
     readonly HistoryRepository repository;
     readonly PhotoStore photos;
     readonly Action changed;
+    readonly Action<PrintRow> deleted;
     PrintRecord record;
 
     [ObservableProperty] private string dateText;
     [ObservableProperty] private bool dateInvalid;
     [ObservableProperty] private string note;
     [ObservableProperty] private BitmapImage? photo;
+    [ObservableProperty] private string? deleteWarning;
 
-    public PrintRow(PrintRecord record, HistoryRepository repository, PhotoStore photos, Action changed)
+    public PrintRow(PrintRecord record, HistoryRepository repository, PhotoStore photos, Action changed, Action<PrintRow> deleted)
     {
-        (this.record, this.repository, this.photos, this.changed) = (record, repository, photos, changed);
+        (this.record, this.repository, this.photos, this.changed, this.deleted) = (record, repository, photos, changed, deleted);
         dateText = PrintDate.Format(record.Date);
         note = record.Note;
         photo = Images.From(record.PhotoPath);
+        PaintStars();
     }
 
     public string RatingText => Stars.Spoken(record.Rating);
 
-    public IReadOnlyList<StarChoice> Choices =>
-        Enumerable.Range(1, 5).Select(n => new StarChoice(n, n <= (record.Rating ?? 0) ? "★" : "☆", $"Valorar amb {n} de 5")).ToList();
+    public IReadOnlyList<StarChoice> Choices { get; } = [.. Enumerable.Range(1, 5).Select(n => new StarChoice(n))];
+
+    public bool IsConfirmingDelete => DeleteWarning is not null;
+
+    partial void OnDeleteWarningChanged(string? value) => OnPropertyChanged(nameof(IsConfirmingDelete));
+
+    void PaintStars()
+    {
+        foreach (var choice in Choices) choice.Glyph = choice.Value <= (record.Rating ?? 0) ? "★" : "☆";
+        OnPropertyChanged(nameof(RatingText));
+    }
 
     // A half-typed date just stays unsaved: the field is marked until it parses.
     partial void OnDateTextChanged(string value)
@@ -56,6 +75,7 @@ public sealed partial class PrintRow : ObservableObject
     {
         // Clicking the current rating clears it, so a print can go back to unrated.
         Save(record with { Rating = record.Rating == choice.Value ? null : choice.Value });
+        PaintStars();
         changed();
     }
 
@@ -76,14 +96,15 @@ public sealed partial class PrintRow : ObservableObject
     }
 
     [RelayCommand]
+    void AskDelete() => DeleteWarning = AttemptText.DeleteWarning(record);
+
+    [RelayCommand]
+    void CancelDelete() => DeleteWarning = null;
+
+    [RelayCommand]
     void Delete()
     {
-        // Nothing removes the photo's file, so it's only the link to it that goes.
-        var photoNote = record.PhotoPath is null ? "" : " La foto deixarà de mostrar-se, però el fitxer es queda a la carpeta de fotos.";
-        var answer = MessageBox.Show(Application.Current.MainWindow, $"Vols esborrar aquesta impressió? La nota es perdrà.{photoNote}", "Esborrar la impressió",
-            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
-        if (answer != MessageBoxResult.OK) return;
         repository.DeletePrint(record.Id);
-        changed();
+        deleted(this);
     }
 }

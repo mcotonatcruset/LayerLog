@@ -108,7 +108,11 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    void ShowFigureNow() => Screen = Screen.Figure;
+    void ShowFigureNow()
+    {
+        Viewer.CloseAttempt();
+        Screen = Screen.Figure;
+    }
 
     [RelayCommand]
     void Escape()
@@ -121,7 +125,7 @@ public sealed partial class MainViewModel : ObservableObject
     void CloseAttempt()
     {
         Viewer.CloseAttempt();
-        if (Viewer.FigureName is null) Screen = Screen.Collection; // a gcode with no figure came from there
+        if (Viewer.FigureName is null) Screen = Screen.Collection; // a gcode opened with no figure behind it
     }
 
     /// <summary>The newest gcode's figure, or the gcode alone when it has none.</summary>
