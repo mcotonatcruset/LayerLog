@@ -5,7 +5,8 @@ using LayerLog.Core.Profiles;
 
 namespace LayerLog.Core.Import;
 
-public sealed record ImportResult(int Added, int Known, int Skipped, bool Interrupted = false);
+/// <param name="Newest">The most recently sliced of the gcodes added, if any.</param>
+public sealed record ImportResult(int Added, int Known, int Skipped, bool Interrupted = false, long? Newest = null);
 
 public sealed class GcodeImporter(HistoryRepository repository, ProfileLibrary profiles)
 {
@@ -28,6 +29,7 @@ public sealed class GcodeImporter(HistoryRepository repository, ProfileLibrary p
     {
         int added = 0, known = 0, skipped = 0;
         var interrupted = false;
+        (DateTime At, long Id)? newest = null;
         var locations = new Dictionary<long, string>();
         var options = new EnumerationOptions { RecurseSubdirectories = true, IgnoreInaccessible = true };
         try
@@ -46,6 +48,7 @@ public sealed class GcodeImporter(HistoryRepository repository, ProfileLibrary p
                         var info = GcodeParser.Parse(stream);
                         id = repository.Add(hash, Path.GetFileName(file), info, Compare(info));
                         added++;
+                        if (newest is null || info.GeneratedAt >= newest.Value.At) newest = (info.GeneratedAt, id.Value);
                     }
                     else known++;
                     locations[id.Value] = Path.GetRelativePath(root, file);
@@ -69,7 +72,7 @@ public sealed class GcodeImporter(HistoryRepository repository, ProfileLibrary p
 
         // A partial pass cannot tell "deleted" from "not reached", so it keeps what we knew.
         if (!interrupted) repository.SetLocations(volumeSerial, locations);
-        return new ImportResult(added, known, skipped, interrupted);
+        return new ImportResult(added, known, skipped, interrupted, newest?.Id);
     }
 
     BaseComparison Compare(GcodeInfo info)

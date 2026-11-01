@@ -44,7 +44,7 @@ public sealed record EntryRow(GcodeEntry Entry) : CollectionRow($"e{Entry.Id}")
     public string Date => Dates.Short(Entry.GeneratedAt);
 }
 
-public sealed partial class CollectionViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<string> open) : ObservableObject
+public sealed partial class CollectionViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<string> open, Action<long> openOrphan) : ObservableObject
 {
     const int RecentCount = 5;
     const double MaxThumbnail = ModelThumbnail.Size;
@@ -284,7 +284,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
         if (!Searching && WithoutFigure.Count > 0)
         {
-            rows.Add(new HeaderRow("Sense figura", "S'assignen des de l'historial"));
+            rows.Add(new HeaderRow("Sense figura", "Obre'n un per assignar-li el model"));
             rows.AddRange(WithoutFigure.Select(e => new EntryRow(e)));
         }
 
@@ -326,6 +326,13 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
     [RelayCommand]
     void Open(FigureCard card) => open(card.Figure.RelativePath);
+
+    // Any row: a recycled container briefly shows its next row through the old template, and the command must take it.
+    [RelayCommand]
+    void OpenEntry(CollectionRow row)
+    {
+        if (row is EntryRow entry) openOrphan(entry.Entry.Id);
+    }
 
     [RelayCommand]
     void CollapseAll()

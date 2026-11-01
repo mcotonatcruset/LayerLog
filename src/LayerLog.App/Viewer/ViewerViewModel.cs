@@ -3,7 +3,6 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LayerLog.App.Collection;
-using LayerLog.App.History;
 using LayerLog.Core.Data;
 using LayerLog.Core.Models;
 using LayerLog.Core.Profiles;
@@ -15,13 +14,14 @@ public sealed record AttemptRow(long GcodeId, string FileName, string Detail, st
     public string Name => $"{FileName}, {Spoken}";
 }
 
-public sealed partial class ViewerViewModel(HistoryRepository repository, CollectionViewModel collection, Action<long> openEntry) : ObservableObject
+public sealed partial class ViewerViewModel(HistoryRepository repository, CollectionViewModel collection, AttemptViewModel attempt) : ObservableObject
 {
     const int KeyChangeCount = 4;
 
     CancellationTokenSource? loading;
     string? shown, shownFolder;
 
+    public AttemptViewModel Attempt => attempt;
     public ObservableCollection<ChangeRow> BestChanges { get; } = [];
     public ObservableCollection<AttemptRow> Attempts { get; } = [];
 
@@ -30,12 +30,12 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
 
     [ObservableProperty] private string? message;
     [ObservableProperty] private bool isLoading;
-    [ObservableProperty] private string? figureName;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowSummary), nameof(ShowOrphan))] private string? figureName;
     [ObservableProperty] private string? place;
     [ObservableProperty] private string? sizeText;
     [ObservableProperty] private bool hasAttempts;
     [ObservableProperty] private string? attemptsTitle;
-    [ObservableProperty] private AttemptRow? selectedAttempt;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowSummary), nameof(ShowOrphan))] private AttemptRow? selectedAttempt;
     [ObservableProperty] private AttemptRow? bestAttempt;
     [ObservableProperty] private string? bestStars;
     [ObservableProperty] private string? bestSpoken;
@@ -43,6 +43,9 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     [ObservableProperty] private string? bestDetail;
     [ObservableProperty] private string? bestCaution;
     [ObservableProperty] private string? allChangesText;
+
+    public bool ShowSummary => FigureName is not null && SelectedAttempt is null;
+    public bool ShowOrphan => FigureName is null && SelectedAttempt is not null;
 
     public void OnCollectionRefreshed()
     {
@@ -67,11 +70,11 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
 
     public async void Open(string relativePath)
     {
+        SelectedAttempt = null;
         if (relativePath == shown) return;
         shown = relativePath;
         shownFolder = collection.ModelFolder;
         collection.RememberModel(relativePath);
-        SelectedAttempt = null;
         UpdateFigure(relativePath);
 
         loading?.Cancel();
@@ -155,12 +158,27 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
             rating is null ? state : Stars.Spoken(rating));
     }
 
-    // ponytail: the attempt opens in the history until the panel can show it (Task 8)
     [RelayCommand]
     void SelectAttempt(AttemptRow row)
     {
+        attempt.Show(row.GcodeId, shown);
         SelectedAttempt = row;
-        openEntry(row.GcodeId);
+    }
+
+    /// <summary>A gcode with no figure: the panel opens on an empty scene.</summary>
+    public void OpenOrphan(long gcodeId)
+    {
+        ClearFigure("Aquest gcode no té cap figura assignada.");
+        attempt.Show(gcodeId);
+        SelectedAttempt = Row(repository.Get(gcodeId));
+    }
+
+    /// <summary>Notes and dates save without a refresh, so the summary catches up here.</summary>
+    public async void CloseAttempt()
+    {
+        if (SelectedAttempt is null) return;
+        SelectedAttempt = null;
+        await collection.UpdateFiguresAsync();
     }
 
     [RelayCommand]

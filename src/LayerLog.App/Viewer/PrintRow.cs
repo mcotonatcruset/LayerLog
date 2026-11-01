@@ -1,11 +1,12 @@
 using System.IO;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LayerLog.Core.Data;
 using Microsoft.Win32;
 
-namespace LayerLog.App.History;
+namespace LayerLog.App.Viewer;
 
 public sealed record StarChoice(int Value, string Glyph, string Spoken);
 
@@ -77,6 +78,11 @@ public sealed partial class PrintRow : ObservableObject
     [RelayCommand]
     void Delete()
     {
+        // Nothing removes the photo's file, so it's only the link to it that goes.
+        var photoNote = record.PhotoPath is null ? "" : " La foto deixarà de mostrar-se, però el fitxer es queda a la carpeta de fotos.";
+        var answer = MessageBox.Show(Application.Current.MainWindow, $"Vols esborrar aquesta impressió? La nota es perdrà.{photoNote}", "Esborrar la impressió",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning, MessageBoxResult.Cancel);
+        if (answer != MessageBoxResult.OK) return;
         repository.DeletePrint(record.Id);
         changed();
     }

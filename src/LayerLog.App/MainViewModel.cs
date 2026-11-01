@@ -3,7 +3,6 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LayerLog.App.Collection;
-using LayerLog.App.History;
 using LayerLog.App.Viewer;
 using LayerLog.Core.Data;
 using LayerLog.Core.Import;
@@ -20,37 +19,28 @@ public sealed partial class MainViewModel : ObservableObject
     readonly GcodeImporter importer;
     readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(8) };
     readonly Dictionary<string, string> cards = [];
+    Action? toastAction;
 
     public CollectionViewModel Collection { get; }
     public ViewerViewModel Viewer { get; }
-    public HistoryViewModel History { get; }
 
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCollection), nameof(ShowFigure))] private Screen screen;
-    // ponytail: the history still sits on top of the two screens; it goes in Task 8
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCollection), nameof(ShowFigure))] private bool showHistory;
     [ObservableProperty] private string cardStatus = "Cap SD connectada";
     [ObservableProperty] private string? toast;
     [ObservableProperty] private bool toastHasAction;
 
-    public bool ShowCollection => !ShowHistory && Screen == Screen.Collection;
-    public bool ShowFigure => !ShowHistory && Screen == Screen.Figure;
+    public bool ShowCollection => Screen == Screen.Collection;
+    public bool ShowFigure => Screen == Screen.Figure;
 
     public MainViewModel()
     {
         Directory.CreateDirectory(AppPaths.DataFolder);
         repository = new HistoryRepository(AppPaths.Database);
         importer = new GcodeImporter(repository, new ProfileLibrary(AppPaths.CrealityProfiles));
-        Collection = new CollectionViewModel(repository, AppSettings.Load(AppPaths.Settings), ShowToast, OpenFigure);
-        Viewer = new ViewerViewModel(repository, Collection, OpenEntry);
+        Collection = new CollectionViewModel(repository, AppSettings.Load(AppPaths.Settings), ShowToast, OpenFigure, OpenOrphan);
+        Viewer = new ViewerViewModel(repository, Collection, new AttemptViewModel(repository, new PhotoStore(AppPaths.Photos), Collection, OpenFigure, ShowToast, CloseAttempt));
         Collection.Refreshed += Viewer.OnCollectionRefreshed;
-        History = new HistoryViewModel(repository, new PhotoStore(AppPaths.Photos), OpenFigure, () => Collection.ModelFolder);
         toastTimer.Tick += (_, _) => HideToast();
-    }
-
-    // Prints and links are edited in the history, so the figures may be stale on the way back.
-    async partial void OnShowHistoryChanged(bool value)
-    {
-        if (!value) await Collection.UpdateFiguresAsync();
     }
 
     public async Task StartAsync()
@@ -58,7 +48,6 @@ public sealed partial class MainViewModel : ObservableObject
         // Picks the screen before the scan, so a remembered figure never flashes the collection.
         if (Collection.Start(out var scan) is { } remembered) ShowModel(remembered);
         await scan;
-        History.Refresh();
     }
 
     public async void OnCardChanged(string root, string? serial)
@@ -78,21 +67,21 @@ public sealed partial class MainViewModel : ObservableObject
     {
         var result = await importer.ImportAsync(root, serial, CancellationToken.None);
         await Collection.LinkModelsAsync();
-        History.Refresh();
         if (result.Added > 0)
         {
             var noun = result.Added == 1 ? "gcode nou" : "gcode nous";
-            ShowToast($"SD {serial}: {result.Added} {noun}", action: true);
+            ShowToast($"SD {serial}: {result.Added} {noun}", () => OpenAttempt(result.Newest!.Value));
         }
-        else if (result.Interrupted) ShowToast($"SD {serial}: no s'ha pogut llegir tota la targeta", action: false);
+        else if (result.Interrupted) ShowToast($"SD {serial}: no s'ha pogut llegir tota la targeta");
     }
 
-    void ShowToast(string text) => ShowToast(text, action: false);
+    void ShowToast(string text) => ShowToast(text, null);
 
-    void ShowToast(string text, bool action)
+    void ShowToast(string text, Action? action)
     {
         Toast = text;
-        ToastHasAction = action;
+        toastAction = action;
+        ToastHasAction = action is not null;
         toastTimer.Stop();
         toastTimer.Start();
     }
@@ -104,38 +93,48 @@ public sealed partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    void ShowHistoryNow()
+    void RunToastAction()
     {
+        var action = toastAction;
         HideToast();
-        ShowHistory = true;
+        action?.Invoke();
     }
 
     [RelayCommand]
     void Back()
     {
-        ShowHistory = false;
+        Viewer.CloseAttempt();
         Screen = Screen.Collection;
     }
 
     [RelayCommand]
-    void ShowFigureNow()
-    {
-        ShowHistory = false;
-        Screen = Screen.Figure;
-    }
+    void ShowFigureNow() => Screen = Screen.Figure;
 
-    // ponytail: Esc does nothing in the history, whose note boxes use it; that view goes in Task 8
     [RelayCommand]
     void Escape()
     {
-        if (ShowFigure) Back();
-        else if (ShowCollection) Collection.Query = "";
+        if (ShowCollection) Collection.Query = "";
+        else if (Viewer.SelectedAttempt is not null) CloseAttempt();
+        else Back();
     }
 
-    void OpenEntry(long gcodeId)
+    void CloseAttempt()
     {
-        History.Select(gcodeId);
-        ShowHistory = true;
+        Viewer.CloseAttempt();
+        if (Viewer.FigureName is null) Screen = Screen.Collection; // a gcode with no figure came from there
+    }
+
+    /// <summary>The newest gcode's figure, or the gcode alone when it has none.</summary>
+    void OpenAttempt(long gcodeId)
+    {
+        if (repository.ObjectLinks(gcodeId).FirstOrDefault(l => l.ModelPath is { } path && Collection.Has(path)) is { } link) OpenFigure(link.ModelPath!);
+        else OpenOrphan(gcodeId);
+    }
+
+    void OpenOrphan(long gcodeId)
+    {
+        ShowFigureNow();
+        Viewer.OpenOrphan(gcodeId);
     }
 
     public void OpenFigure(string relativePath)
