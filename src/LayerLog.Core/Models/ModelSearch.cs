@@ -13,7 +13,19 @@ public static class ModelSearch
     {
         if (filter == FigureFilter.Printed && gcodeCount == 0) return false;
         if (filter == FigureFilter.Unprinted && gcodeCount > 0) return false;
-        return query.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .All(word => CultureInfo.InvariantCulture.CompareInfo.IndexOf(relativePath, word, Loose) >= 0);
+        return AllWordsIn(relativePath, query);
     }
+
+    /// <summary>Every word has to appear in the name or the path (folder included); printed means at least one attempt.</summary>
+    public static bool Matches(Figure figure, string query, FigureFilter filter)
+    {
+        var attempts = figure.Stats.Attempts;
+        if (filter == FigureFilter.Printed && attempts == 0) return false;
+        if (filter == FigureFilter.Unprinted && attempts > 0) return false;
+        return AllWordsIn($"{figure.Name} {figure.RelativePath}", query);
+    }
+
+    static bool AllWordsIn(string text, string query) =>
+        query.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .All(word => CultureInfo.InvariantCulture.CompareInfo.IndexOf(text, word, Loose) >= 0);
 }

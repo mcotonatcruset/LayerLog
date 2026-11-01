@@ -96,6 +96,41 @@ public sealed class HistoryRepository
         return counts;
     }
 
+    /// <summary>One query for every figure: a gcode counts once per figure however many of its objects link to it.</summary>
+    public IReadOnlyDictionary<string, FigureStats> FigureStats()
+    {
+        using var c = Database.Open(path);
+        var rows = new List<(string Model, long Gcode, string At, string Profile, int? Rating, string? Date, long? PrintId)>();
+        using (var r = Command(c, """
+            SELECT DISTINCT o.model_path, g.id, g.generated_at, g.process_profile, p.rating, p.date, p.id
+            FROM gcode_object o JOIN gcode g ON g.id = o.gcode_id LEFT JOIN print p ON p.gcode_id = g.id
+            WHERE o.model_path IS NOT NULL
+            """).ExecuteReader())
+            while (r.Read())
+                rows.Add((r.GetString(0), r.GetInt64(1), r.GetString(2), r.GetString(3),
+                    r.IsDBNull(4) ? null : r.GetInt32(4), r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetInt64(6)));
+
+        return rows.GroupBy(x => x.Model).ToDictionary(g => g.Key, g =>
+        {
+            var best = g.Where(x => x.Rating is not null)
+                .OrderByDescending(x => x.Rating).ThenByDescending(x => x.Date, StringComparer.Ordinal).ThenByDescending(x => x.PrintId)
+                .FirstOrDefault();
+            return new FigureStats(g.Select(x => x.Gcode).Distinct().Count(),
+                DateTime.ParseExact(g.Max(x => x.At)!, TimeFormat, CultureInfo.InvariantCulture), best.Rating, best.Profile);
+        });
+    }
+
+    /// <summary>Gcodes none of whose linked models still exist, including gcodes never linked to any model.</summary>
+    public IReadOnlyList<GcodeEntry> EntriesWithoutFigure(IReadOnlySet<string> existingModels)
+    {
+        var withFigure = new HashSet<long>();
+        using (var c = Database.Open(path))
+        using (var r = Command(c, "SELECT gcode_id, model_path FROM gcode_object WHERE model_path IS NOT NULL").ExecuteReader())
+            while (r.Read())
+                if (existingModels.Contains(r.GetString(1))) withFigure.Add(r.GetInt64(0));
+        return Entries("", []).Where(e => !withFigure.Contains(e.Id)).ToList();
+    }
+
     public IReadOnlyList<ObjectLink> ObjectLinks(long gcodeId)
     {
         using var c = Database.Open(path);
