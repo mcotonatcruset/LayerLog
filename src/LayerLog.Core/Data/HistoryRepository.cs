@@ -68,6 +68,8 @@ public sealed class HistoryRepository
         return Entries(filter, string.IsNullOrWhiteSpace(search) ? [] : [$"%{search}%"]);
     }
 
+    public GcodeEntry Get(long id) => Entries("WHERE g.id = $0", [id]).Single();
+
     public IReadOnlyList<GcodeEntry> ListForObject(string objectName) =>
         Entries("WHERE EXISTS (SELECT 1 FROM gcode_object o WHERE o.gcode_id = g.id AND o.name = $0)", [objectName]);
 

@@ -63,7 +63,7 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - **Ombra de contacte:** un pla amb una textura radial negra sota la figura, de la mida de la seva base. Gira amb la figura.
 - **Enquadrament:** una figura tan alta com ampla ocupa més del 60 % de l'alçada de la vista.
 - Els missatges del centre de l'escena (càrrega, error, 3MF) van sobre una píndola opaca de `Panel`, que només apareix quan hi ha alguna cosa a dir.
-- L'etiqueta de la figura va sobre una targeta opaca de `Panel`. L'escena no porta cap text directament a sobre, tret de la barra de títol.
+- L'escena no porta cap text directament a sobre, tret de la barra de títol i de la píndola de missatges.
 - La barra de títol és transparent sobre l'escena, i per això el text no seleccionat és `Soft`: 5:1 a la zona més clara del fons, i 7,3:1 sobre `Sweep`.
 
 ## Col·lecció
@@ -73,7 +73,23 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - Les miniatures es descodifiquen a la mida en què es mostren, multiplicada pels DPI i amb un màxim de 320 px.
 - La figura oberta porta una vora `Muted` de 2 px. El focus és l'anell `Ink`, 3 px per fora.
 - Clic o Retorn obren la figura. Espai la selecciona per enviar-la. F2 li canvia el nom. La casella només apareix en passar el ratolí, amb focus o si està marcada.
+- Les files de «Sense figura» obren el gcode al panell d'intent.
 - La barra d'enviament és `Panel`, a la part inferior, i només hi és amb alguna figura seleccionada.
+
+## Panell de figura
+
+- 390 px d'amplada, opac (`Panel`), a la dreta. L'escena ocupa la resta, i per això la figura queda centrada a la zona lliure. Sense figura, el panell desapareix.
+- El contingut es desplaça, i «Enviar a Creality Print» queda fix a sota. Marges laterals de 26 px, 22 px entre blocs.
+- El nom va en `Title`. La nota de la millor impressió, a 17 px: és contingut, no metadada. Sense nota, el bloc no hi és.
+- Canvis clau: etiqueta `Soft`, valor base `Muted` i valor usat `Change`.
+
+## Panell d'intent
+
+- Mateix lloc i amplada que el panell de figura, que substitueix quan s'obre un intent. «Tornar» queda fix a dalt; Esc fa el mateix.
+- Ordre: gcode, altres figures, «Què vas canviar», impressions i configuració completa plegada. Els canvis fan servir les mateixes files que el panell de figura.
+- Un gcode sense figura s'obre igual, amb l'escena buida i la píndola «Aquest gcode no té cap figura assignada.» amb el botó «Assignar model». En assignar-lo, s'obre la figura.
+- La figura oberta i la recordada no canvien: Esc hi torna, o a Col·lecció si no n'hi havia.
+- Esborrar una impressió es confirma a la mateixa fila: un text amb el que es perd, i «Cancel·lar» amb el focus. Esc cancel·la.
 
 ## Miniatures
 

@@ -44,7 +44,7 @@ public sealed record EntryRow(GcodeEntry Entry) : CollectionRow($"e{Entry.Id}")
     public string Date => Dates.Short(Entry.GeneratedAt);
 }
 
-public sealed partial class CollectionViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<string> open) : ObservableObject
+public sealed partial class CollectionViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<string> open, Action<long> openOrphan) : ObservableObject
 {
     const int RecentCount = 5;
     const double MaxThumbnail = ModelThumbnail.Size;
@@ -99,7 +99,13 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     public bool Has(string relativePath) => !scanned || models.Any(m => m.RelativePath == relativePath);
 
     public string NameOf(string relativePath) =>
-        Cards.FirstOrDefault(c => c.Figure.RelativePath == relativePath)?.Figure.Name ?? Path.GetFileNameWithoutExtension(relativePath);
+        Cards.FirstOrDefault(c => c.Figure.RelativePath == relativePath)?.Figure.Name // no cards yet while a remembered figure opens
+        ?? repository.FigureMetas().GetValueOrDefault(relativePath)?.Alias
+        ?? Path.GetFileNameWithoutExtension(relativePath);
+
+    /// <summary>A figure's folder as shown to the user: the path inside the model folder, or that folder's name at its root.</summary>
+    public string FolderTitle(string folder) =>
+        folder.Length > 0 ? folder.Replace(Path.DirectorySeparatorChar.ToString(), " / ") : Path.GetFileName(ModelFolder!.TrimEnd(Path.DirectorySeparatorChar));
 
     public void RememberModel(string? relativePath)
     {
@@ -204,7 +210,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         var wanted = figures.GroupBy(f => f.Folder).Select(g => new CollectionSection(g.Key, g.Select(f => new FigureCard(f, UpdateSend)), UpdateRows)).ToList();
         ListSync.Apply(Sections, wanted, (a, b) => a.Folder == b.Folder,
             (a, b) => ListSync.Apply(a.Cards, b.Cards, (x, y) => x.Figure.RelativePath == y.Figure.RelativePath, (x, y) => x.Figure = y.Figure));
-        foreach (var section in Sections) section.Title = section.Folder.Length > 0 ? section.Folder.Replace(Path.DirectorySeparatorChar.ToString(), " / ") : Path.GetFileName(ModelFolder!.TrimEnd(Path.DirectorySeparatorChar));
+        foreach (var section in Sections) section.Title = FolderTitle(section.Folder);
 
         var cards = Cards.ToDictionary(c => c.Figure.RelativePath);
         ListSync.Apply(Recent, [.. FigureCatalog.Recent(figures, RecentCount).Select(f => cards[f.RelativePath])], ReferenceEquals);
@@ -278,7 +284,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
         if (!Searching && WithoutFigure.Count > 0)
         {
-            rows.Add(new HeaderRow("Sense figura", "S'assignen des de l'historial"));
+            rows.Add(new HeaderRow("Sense figura", "Obre'n un per assignar-li el model"));
             rows.AddRange(WithoutFigure.Select(e => new EntryRow(e)));
         }
 
@@ -320,6 +326,13 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
     [RelayCommand]
     void Open(FigureCard card) => open(card.Figure.RelativePath);
+
+    // Any row: a recycled container briefly shows its next row through the old template, and the command must take it.
+    [RelayCommand]
+    void OpenEntry(CollectionRow row)
+    {
+        if (row is EntryRow entry) openOrphan(entry.Entry.Id);
+    }
 
     [RelayCommand]
     void CollapseAll()

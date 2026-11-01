@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Media3D;
+using System.Windows.Threading;
 using HelixToolkit;
 using HelixToolkit.Maths;
 using HelixToolkit.SharpDX;
@@ -50,7 +51,18 @@ public partial class ViewerView : UserControl
         DataContextChanged += (_, e) =>
         {
             model = e.NewValue as ViewerViewModel;
-            if (model is not null) model.MeshChanged += ShowMesh;
+            if (model is null) return;
+            model.MeshChanged += ShowMesh;
+            model.PropertyChanged += (_, a) =>
+            {
+                if (a.PropertyName == nameof(ViewerViewModel.ShowOrphan)) ApplySceneVisibility();
+            };
+            model.Attempt.PropertyChanged += (_, a) =>
+            {
+                if (a.PropertyName != nameof(AttemptViewModel.IsComparing)) return;
+                ApplySceneVisibility();
+                if (!model.Attempt.IsComparing) Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => { if (AttemptPanel.IsVisible) AttemptPanel.FocusCompare(); });
+            };
         };
         IsVisibleChanged += (_, e) =>
         {
@@ -59,6 +71,10 @@ public partial class ViewerView : UserControl
         };
         Unloaded += (_, _) => CompositionTarget.Rendering -= Turn;
     }
+
+    // Not drawn while the orphan message or a comparison covers the scene. Every place that sets geometry goes through here too.
+    void ApplySceneVisibility() =>
+        Mesh.IsRendering = ContactShadow.IsRendering = model is { ShowOrphan: false, Attempt.IsComparing: false };
 
     async void ShowMesh(StlMesh? mesh)
     {
@@ -76,6 +92,7 @@ public partial class ViewerView : UserControl
         if (request != meshRequest) return;
         Mesh.Geometry = geometry;
         Frame(mesh);
+        ApplySceneVisibility();
     }
 
     static MeshGeometry3D Build(StlMesh mesh)

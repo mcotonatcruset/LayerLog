@@ -38,6 +38,16 @@ public sealed class GcodeImporterTests : IDisposable
     }
 
     [Fact]
+    public async Task Newest_is_the_last_sliced_of_those_added()
+    {
+        Put("system-profile.gcode", "a.gcode");
+        Put("custom-profile.gcode", "b.gcode");
+        var r = await Import();
+        Assert.Equal("a.gcode", repo.Get(r.Newest!.Value).FileName);
+        Assert.Null((await Import()).Newest);
+    }
+
+    [Fact]
     public async Task Second_import_adds_nothing()
     {
         Put("custom-profile.gcode", "a.gcode");

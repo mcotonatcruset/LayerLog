@@ -1,3 +1,4 @@
+using LayerLog.Core.Data;
 using LayerLog.Core.Models;
 using LayerLog.Core.Profiles;
 
@@ -10,6 +11,17 @@ public class AttemptTextTests
     [InlineData(1, "1 impressió")]
     [InlineData(3, "3 impressions")]
     public void State_uses_the_agreed_words(int prints, string text) => Assert.Equal(text, AttemptText.State(prints));
+
+    [Theory]
+    [InlineData(false, false, null)]
+    [InlineData(true, false, "Comparació aproximada: no hi ha perfils de la versió 7.0, s'ha fet servir la 6.3.")]
+    [InlineData(false, true, "No s'ha trobat algun perfil base: mira la configuració completa.")]
+    public void Caution_says_why_the_changes_may_not_be_exact(bool approximate, bool missing, string? text)
+    {
+        var entry = new GcodeEntry(1, "a.gcode", default, "7.0.1.2", null, null, "", "", new Dictionary<string, string>(), [], [], "6.3", approximate, missing, null, [], []);
+
+        Assert.Equal(text, AttemptText.Caution(entry));
+    }
 
     [Fact]
     public void Pick_orders_by_importance_then_known_labels()
@@ -44,4 +56,12 @@ public class AttemptTextTests
 
         Assert.Equal(["layer_height", "travel_speed"], picked);
     }
+
+    [Theory]
+    [InlineData(null, "", null, "Vols esborrar aquesta impressió? No es pot desfer.")]
+    [InlineData(4, "  ", null, "Vols esborrar aquesta impressió? Es perdrà la valoració. No es pot desfer.")]
+    [InlineData(null, "nota", null, "Vols esborrar aquesta impressió? Es perdrà la nota. No es pot desfer.")]
+    [InlineData(4, "nota", "f.png", "Vols esborrar aquesta impressió? Es perdran la valoració i la nota. El fitxer de la foto es queda al disc. No es pot desfer.")]
+    public void Delete_warning_names_only_what_there_is(int? rating, string note, string? photo, string expected) =>
+        Assert.Equal(expected, AttemptText.DeleteWarning(new PrintRecord(1, 1, new DateOnly(2026, 1, 1), rating, note, photo)));
 }

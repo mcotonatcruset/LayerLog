@@ -3,7 +3,6 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:collection="clr-namespace:LayerLog.App.Collection"
         xmlns:viewer="clr-namespace:LayerLog.App.Viewer"
-        xmlns:history="clr-namespace:LayerLog.App.History"
         xmlns:models="clr-namespace:LayerLog.Core.Models;assembly=LayerLog.Core"
         Title="LayerLog" Width="1500" Height="900" MinWidth="1100" MinHeight="700"
         Background="{StaticResource Sweep}" Foreground="{StaticResource Ink}"
@@ -20,8 +19,6 @@
                        Visibility="{Binding DataContext.ShowFigure, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
     <collection:CollectionView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding Collection}" Margin="0,52,0,0"
                                Visibility="{Binding DataContext.ShowCollection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
-    <history:HistoryView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding History}" Margin="0,52,0,0"
-                         Visibility="{Binding DataContext.ShowHistory, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
 
     <!-- Last child so it draws on top; TabIndex (on Local groups, else ignored) makes Tab reach the bar first -->
     <Grid KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="0" VerticalAlignment="Top" Height="52" Margin="20,0,0,0">
@@ -35,7 +32,6 @@
       <TextBlock Text="LayerLog" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" Margin="0,0,24,0"/>
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
         <RadioButton Style="{StaticResource TabButton}" Content="Col·lecció" GroupName="Tabs" IsChecked="{Binding ShowCollection, Mode=OneWay}" Command="{Binding BackCommand}"/>
-        <RadioButton Style="{StaticResource TabButton}" Content="Historial" GroupName="Tabs" Margin="4,0,0,0" IsChecked="{Binding ShowHistory, Mode=OneWay}" Command="{Binding ShowHistoryNowCommand}"/>
         <RadioButton Style="{StaticResource TabButton}" GroupName="Tabs" Margin="4,0,0,0" MaxWidth="300" IsChecked="{Binding ShowFigure, Mode=OneWay}" Command="{Binding ShowFigureNowCommand}"
                      AutomationProperties.Name="{Binding Viewer.FigureName}" ToolTip="{Binding Viewer.FigureName}"
                      Visibility="{Binding Viewer.FigureName, Converter={StaticResource NullToCollapsed}}">
@@ -105,7 +101,7 @@
       </Border.Style>
       <StackPanel Orientation="Horizontal">
         <TextBlock Text="{Binding Toast}" AutomationProperties.LiveSetting="Polite"/>
-        <Button Style="{StaticResource LinkButton}" Content="Veure a l'historial" Margin="16,0,0,0" Command="{Binding ShowHistoryNowCommand}"
+        <Button Style="{StaticResource LinkButton}" Content="Veure'l" Margin="16,0,0,0" Command="{Binding RunToastActionCommand}"
                 Visibility="{Binding ToastHasAction, Converter={StaticResource BoolToVisible}}"/>
       </StackPanel>
     </Border>

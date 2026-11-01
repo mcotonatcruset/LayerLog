@@ -1,0 +1,40 @@
+<UserControl x:Class="LayerLog.App.Viewer.ComparisonView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="{StaticResource Sweep}">
+  <!-- Fills the scene column. Sweep, opaque, so the paused 3D view never shows through -->
+  <ScrollViewer Margin="0,52,0,0" VerticalScrollBarVisibility="Auto" Focusable="False">
+    <StackPanel MaxWidth="720" Margin="40,8,40,48">
+      <Button x:Name="BackButton" Style="{StaticResource LinkButton}" Content="← Tornar a l'intent" FontSize="14" HorizontalAlignment="Left" Margin="0,0,0,18"
+              Command="{Binding CloseComparisonCommand}" AutomationProperties.Name="Tornar a l'intent" ToolTip="Tornar a l'intent (Esc)"/>
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="170"/>
+          <ColumnDefinition Width="170"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Comparació" Style="{StaticResource H1}" VerticalAlignment="Bottom"/>
+        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+          <Image Source="{Binding ThumbA}" Width="72" Height="72" HorizontalAlignment="Right"/>
+          <TextBlock Text="{Binding NameA}" ToolTip="{Binding NameA}" Foreground="{StaticResource Soft}" FontSize="13" TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="Aquest intent" Style="{StaticResource MutedText}" TextAlignment="Right"/>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Margin="12,0,0,0">
+          <Image Source="{Binding ThumbB}" Width="72" Height="72" HorizontalAlignment="Right"/>
+          <TextBlock Text="{Binding NameB}" ToolTip="{Binding NameB}" Foreground="{StaticResource Soft}" FontSize="13" TextAlignment="Right" TextTrimming="CharacterEllipsis"/>
+          <TextBlock Text="L'altre" Style="{StaticResource MutedText}" TextAlignment="Right"/>
+        </StackPanel>
+      </Grid>
+      <TextBlock Text="{Binding CompareTitle}" Style="{StaticResource H2}" Margin="0,24,0,6" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+      <TextBlock Text="{Binding CompareNote}" Style="{StaticResource MutedText}" Margin="0,0,0,10" Visibility="{Binding CompareNote, Converter={StaticResource NullToCollapsed}}"/>
+
+      <ItemsControl ItemsSource="{Binding CompareRows}" Focusable="False" ItemTemplate="{StaticResource CompareItem}"/>
+
+      <StackPanel Margin="0,14,0,0" Visibility="{Binding CompareRestTitle, Converter={StaticResource NullToCollapsed}}">
+        <ToggleButton Style="{StaticResource LinkButton}" Foreground="{StaticResource Soft}" FontSize="14" Content="{Binding CompareRestTitle}" IsChecked="{Binding ShowRest}" HorizontalAlignment="Left"/>
+        <ItemsControl ItemsSource="{Binding CompareRest}" Focusable="False" ItemTemplate="{StaticResource CompareItem}" Margin="0,6,0,0"
+                      Visibility="{Binding ShowRest, Converter={StaticResource BoolToVisible}}"/>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
