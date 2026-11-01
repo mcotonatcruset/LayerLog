@@ -57,6 +57,23 @@ public sealed class FigureCatalogTests : IDisposable
     }
 
     [Fact]
+    public void Prints_are_counted_once_each_across_the_attempts_of_a_figure()
+    {
+        var first = Gcode("a", "Fine", "3.stl", "5.stl");
+        var second = Gcode("b", "Fine", "3.stl");
+        Gcode("c", "Fine", "7.stl");
+        repo.AddPrint(first, new DateOnly(2026, 1, 1), 4, "", null);
+        repo.AddPrint(first, new DateOnly(2026, 1, 2), null, "", null);
+        repo.AddPrint(second, new DateOnly(2026, 1, 3), null, "", null);
+
+        var stats = repo.FigureStats();
+        Assert.Equal(3, stats["3.stl"].Prints);
+        Assert.Equal(2, stats["5.stl"].Prints);
+        Assert.Equal(0, stats["7.stl"].Prints);
+        Assert.Equal(1, stats["7.stl"].Attempts);
+    }
+
+    [Fact]
     public void Best_rating_breaks_ties_with_the_most_recent_print()
     {
         var old = Gcode("a", "Old", "3.stl");

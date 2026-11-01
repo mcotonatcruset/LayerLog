@@ -11,7 +11,7 @@ public partial class CollectionView : UserControl
 {
     const double MinCardWidth = 240, Gap = 16, SidePadding = 48 + 8;
 
-    CollectionViewModel Model => (CollectionViewModel)DataContext;
+    CollectionViewModel? Model => DataContext as CollectionViewModel;
 
     public CollectionView()
     {
@@ -42,11 +42,11 @@ public partial class CollectionView : UserControl
     void OnListResized(object sender, SizeChangedEventArgs e) => ApplyLayout();
 
     void ApplyLayout() =>
-        (DataContext as CollectionViewModel)?.SetLayout(Math.Max(1, (int)((List.ActualWidth - SidePadding + Gap) / (MinCardWidth + Gap))), VisualTreeHelper.GetDpi(this).DpiScaleX);
+        Model?.SetLayout(Math.Max(1, (int)((List.ActualWidth - SidePadding + Gap) / (MinCardWidth + Gap))), VisualTreeHelper.GetDpi(this).DpiScaleX);
 
     void OnCardClick(object sender, MouseButtonEventArgs e)
     {
-        if (sender is ListBoxItem { DataContext: FigureCard { IsRenaming: false } card }) Model.OpenCommand.Execute(card);
+        if (sender is ListBoxItem { DataContext: FigureCard card } item && !IsRenaming(item)) Model?.OpenCommand.Execute(card);
     }
 
     void OnCardKey(object sender, KeyEventArgs e)
@@ -55,13 +55,13 @@ public partial class CollectionView : UserControl
         switch (e.Key)
         {
             case Key.Return:
-                Model.OpenCommand.Execute(card);
+                Model?.OpenCommand.Execute(card);
                 break;
             case Key.Space:
                 card.IsMarked = !card.IsMarked;
                 break;
             case Key.F2:
-                card.IsRenaming = true;
+                StartRenaming(item, card);
                 break;
             case Key.Up or Key.Down: // each row is its own ListBox, which can't cross to the next one
                 var direction = e.Key == Key.Up ? FocusNavigationDirection.Up : FocusNavigationDirection.Down;
@@ -73,18 +73,35 @@ public partial class CollectionView : UserControl
         e.Handled = true;
     }
 
-    void OnMenuOpen(object sender, RoutedEventArgs e) => Model.OpenCommand.Execute(CardOf(sender));
+    void OnMenuOpen(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FigureCard card }) Model?.OpenCommand.Execute(card);
+    }
 
-    void OnMenuRename(object sender, RoutedEventArgs e) => CardOf(sender).IsRenaming = true;
+    void OnMenuRename(object sender, RoutedEventArgs e)
+    {
+        if (sender is MenuItem { DataContext: FigureCard card, Parent: ContextMenu { PlacementTarget: ListBoxItem item } }) StartRenaming(item, card);
+    }
 
-    async void OnMenuPart(object sender, RoutedEventArgs e) => await Model.TogglePartAsync(CardOf(sender));
+    async void OnMenuPart(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: FigureCard card } && Model is { } model) await model.TogglePartAsync(card);
+    }
 
-    static FigureCard CardOf(object element) => (FigureCard)((FrameworkElement)element).DataContext;
+    static TextBox? Editor(ListBoxItem item) => Descendants(item).OfType<TextBox>().FirstOrDefault();
+
+    static bool IsRenaming(ListBoxItem item) => Editor(item) is { Visibility: Visibility.Visible };
+
+    static void StartRenaming(ListBoxItem item, FigureCard card)
+    {
+        if (Editor(item) is not { } box) return;
+        box.SetCurrentValue(TextBox.TextProperty, card.Figure.Name);
+        box.Visibility = Visibility.Visible;
+    }
 
     void OnNameShown(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.NewValue is not true) return;
-        var box = (TextBox)sender;
+        if (e.NewValue is not true || sender is not TextBox box) return;
         box.Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
         {
             box.Focus();
@@ -94,21 +111,16 @@ public partial class CollectionView : UserControl
 
     void OnNameKey(object sender, KeyEventArgs e)
     {
-        if (e.Key is not (Key.Return or Key.Escape)) return;
+        if (e.Key is not (Key.Return or Key.Escape) || sender is not TextBox { DataContext: FigureCard card } box) return;
         e.Handled = true;
-        var box = (TextBox)sender;
-        var card = (FigureCard)box.DataContext;
-        var item = Descendants(List).OfType<ListBoxItem>().FirstOrDefault(i => Descendants(i).Contains(box));
-        if (e.Key == Key.Escape) box.Text = card.Figure.Name;
-        item?.Focus(); // leaving the box is what saves it
+        if (e.Key == Key.Escape) box.SetCurrentValue(TextBox.TextProperty, card.Figure.Name);
+        Descendants(List).OfType<ListBoxItem>().FirstOrDefault(i => Editor(i) == box)?.Focus(); // leaving the box is what saves it
     }
 
     async void OnNameLeft(object sender, KeyboardFocusChangedEventArgs e)
     {
-        var box = (TextBox)sender;
-        var card = (FigureCard)box.DataContext;
-        if (!card.IsRenaming) return;
-        card.IsRenaming = false;
-        await Model.RenameAsync(card, box.Text);
+        if (sender is not TextBox { DataContext: FigureCard card, Visibility: Visibility.Visible } box || Model is not { } model) return;
+        box.Visibility = Visibility.Collapsed;
+        await model.RenameAsync(card, box.Text);
     }
 }

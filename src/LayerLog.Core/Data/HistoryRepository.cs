@@ -106,7 +106,7 @@ public sealed class HistoryRepository
             var best = g.Where(x => x.Rating is not null)
                 .OrderByDescending(x => x.Rating).ThenByDescending(x => x.Date, StringComparer.Ordinal).ThenByDescending(x => x.PrintId)
                 .FirstOrDefault();
-            return new FigureStats(g.Select(x => x.Gcode).Distinct().Count(),
+            return new FigureStats(g.Select(x => x.Gcode).Distinct().Count(), g.Select(x => x.PrintId).OfType<long>().Distinct().Count(),
                 DateTime.ParseExact(g.Max(x => x.At)!, TimeFormat, CultureInfo.InvariantCulture), best.Rating, best.Profile);
         });
     }

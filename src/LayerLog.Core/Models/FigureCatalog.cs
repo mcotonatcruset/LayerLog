@@ -2,13 +2,13 @@ using LayerLog.Core.Data;
 
 namespace LayerLog.Core.Models;
 
-public sealed record FigureStats(int Attempts, DateTime? LastAttempt, int? BestRating, string? BestProfile);
+public sealed record FigureStats(int Attempts, int Prints, DateTime? LastAttempt, int? BestRating, string? BestProfile);
 
 public sealed record Figure(string RelativePath, string Name, string Folder, bool IsPart, FigureStats Stats);
 
 public static class FigureCatalog
 {
-    static readonly FigureStats NoStats = new(0, null, null, null);
+    static readonly FigureStats NoStats = new(0, 0, null, null, null);
 
     public static IReadOnlyList<Figure> Build(IEnumerable<ModelFile> models,
         IReadOnlyDictionary<string, FigureMeta> metas, IReadOnlyDictionary<string, FigureStats> stats) =>

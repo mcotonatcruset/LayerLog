@@ -108,7 +108,10 @@
     <!-- The file type shows until the picture is ready, and stays for 3MF and unreadable files -->
     <DataTemplate x:Key="Picture" DataType="collection:FigureCard">
       <Grid>
-        <TextBlock x:Name="Extension" Text="{Binding Extension}" Foreground="{StaticResource Soft}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <!-- A chip of its own: the centre of the Recents glow is too light behind small text -->
+        <Border x:Name="Extension" Background="{StaticResource Card}" CornerRadius="4" Padding="8,3" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <TextBlock Text="{Binding Extension}" Foreground="{StaticResource Ink}" FontSize="13"/>
+        </Border>
         <Image Source="{Binding Thumbnail}" RenderOptions.BitmapScalingMode="HighQuality"/>
       </Grid>
       <DataTemplate.Triggers>
@@ -120,12 +123,16 @@
 
     <DataTemplate x:Key="CardName" DataType="collection:FigureCard">
       <Grid>
-        <TextBlock Text="{Binding Figure.Name}" ToolTip="{Binding Figure.RelativePath}" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"
-                   Visibility="{Binding IsRenaming, Converter={StaticResource NotBoolToVisible}}"/>
-        <TextBox Text="{Binding Figure.Name, Mode=OneWay}" AutomationProperties.Name="Nom de la figura" Padding="4,2" Cursor="IBeam"
-                 Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisible}}"
+        <TextBlock x:Name="Label" Text="{Binding Figure.Name}" ToolTip="{Binding Figure.RelativePath}" FontWeight="SemiBold" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/>
+        <!-- Shown from code on this one card: a figure can be on screen twice, in Recents and in its folder -->
+        <TextBox x:Name="Editor" Text="{Binding Figure.Name, Mode=OneWay}" AutomationProperties.Name="Nom de la figura" Padding="4,2" Cursor="IBeam" Visibility="Collapsed"
                  IsVisibleChanged="OnNameShown" PreviewKeyDown="OnNameKey" LostKeyboardFocus="OnNameLeft"/>
       </Grid>
+      <DataTemplate.Triggers>
+        <DataTrigger Binding="{Binding Visibility, ElementName=Editor}" Value="Visible">
+          <Setter TargetName="Label" Property="Visibility" Value="Collapsed"/>
+        </DataTrigger>
+      </DataTemplate.Triggers>
     </DataTemplate>
 
     <DataTemplate x:Key="HeroCard" DataType="collection:FigureCard">
@@ -190,8 +197,11 @@
         </ToggleButton>
       </DockPanel>
       <DataTemplate.Triggers>
-        <DataTrigger Binding="{Binding Section.IsExpanded}" Value="True">
+        <DataTrigger Binding="{Binding Section.IsOpen}" Value="True">
           <Setter TargetName="Glyph" Property="Text" Value="▾"/>
+        </DataTrigger>
+        <DataTrigger Binding="{Binding Section.IsSearching}" Value="True">
+          <Setter TargetName="Toggle" Property="IsEnabled" Value="False"/>
         </DataTrigger>
       </DataTemplate.Triggers>
     </DataTemplate>

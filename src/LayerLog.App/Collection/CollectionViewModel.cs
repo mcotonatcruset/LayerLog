@@ -20,10 +20,12 @@ public sealed partial class CollectionSection(string folder, IEnumerable<FigureC
     public List<FigureCard> Cards { get; } = [.. cards];
 
     [ObservableProperty] private string title = "";
-    [ObservableProperty] private bool isExpanded = true;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsOpen))] private bool isExpanded = true;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsOpen))] private bool isSearching;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(PartsText))] private bool showParts;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasParts), nameof(PartsText))] private int partCount;
 
+    public bool IsOpen => IsExpanded || IsSearching; // a search opens every section it finds something in
     public bool HasParts => PartCount > 0;
     public string PartsText => ShowParts ? "Amagar les peces" : $"Mostrar les peces ({PartCount})";
 
@@ -54,7 +56,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     FigureFilter filter;
     string? selected;
     double dpiScale = 1;
-    bool refreshing, refreshAgain;
+    bool refreshing, refreshAgain, scanned;
 
     public string? ModelFolder => settings.ModelFolder;
     public bool HasMarks => MarkedText is not null;
@@ -93,7 +95,8 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         return start.ModelToOpen;
     }
 
-    public bool Has(string relativePath) => models.Any(m => m.RelativePath == relativePath);
+    /// <summary>Until the first scan ends nothing is known to be missing, so everything counts as there.</summary>
+    public bool Has(string relativePath) => !scanned || models.Any(m => m.RelativePath == relativePath);
 
     public string NameOf(string relativePath) =>
         Cards.FirstOrDefault(c => c.Figure.RelativePath == relativePath)?.Figure.Name ?? Path.GetFileNameWithoutExtension(relativePath);
@@ -154,6 +157,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         WithoutFigure.Clear();
         Rows.Clear();
         models = [];
+        scanned = false;
         watcher?.Dispose();
         watcher = new ModelWatcher(folder, Dispatcher.CurrentDispatcher, RefreshOnChange);
         await RefreshModelsAsync();
@@ -176,6 +180,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
                 refreshAgain = false;
                 var folder = ModelFolder!;
                 models = [.. await Task.Run(() => ModelLibrary.Scan(folder))];
+                scanned = true;
                 await LinkModelsAsync();
             }
             while (refreshAgain);
@@ -189,12 +194,13 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     /// <summary>Merges into what's on screen, so collapsed sections, marks and the selection survive.</summary>
     public async Task UpdateFiguresAsync()
     {
-        var scanned = models;
-        var paths = scanned.Select(m => m.RelativePath).ToHashSet();
+        if (!scanned) return; // an empty list here means not known yet, not an empty folder
+        var current = models;
+        var paths = current.Select(m => m.RelativePath).ToHashSet();
         var (metas, stats, orphans) = await Task.Run(() => (repository.FigureMetas(), repository.FigureStats(), repository.EntriesWithoutFigure(paths)));
-        if (!ReferenceEquals(scanned, models)) return; // a newer scan took over and will finish this
+        if (!ReferenceEquals(current, models)) return; // a newer scan took over and will finish this
 
-        var figures = FigureCatalog.Build(scanned, metas, stats);
+        var figures = FigureCatalog.Build(current, metas, stats);
         var wanted = figures.GroupBy(f => f.Folder).Select(g => new CollectionSection(g.Key, g.Select(f => new FigureCard(f, UpdateSend)), UpdateRows)).ToList();
         ListSync.Apply(Sections, wanted, (a, b) => a.Folder == b.Folder,
             (a, b) => ListSync.Apply(a.Cards, b.Cards, (x, y) => x.Figure.RelativePath == y.Figure.RelativePath, (x, y) => x.Figure = y.Figure));
@@ -212,6 +218,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     }
 
     // One at a time and off the UI thread: a large STL takes a moment to read and the cards fill in as they arrive.
+    // ponytail: every thumbnail is decoded and held, visible or not, about 70 KB each at 100 %; load them per realized row if folders reach tens of thousands
     async void LoadThumbnails()
     {
         if (ModelFolder is null) return;
@@ -261,10 +268,11 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         {
             var matching = section.Cards.Where(c => ModelSearch.Matches(c.Figure, Query, filter)).ToList();
             section.PartCount = matching.Count(c => c.Figure.IsPart);
+            section.IsSearching = Searching;
             if (matching.Count == 0) continue;
             found += matching.Count;
             rows.Add(new SectionRow(section));
-            if (section.IsExpanded || Searching)
+            if (section.IsOpen)
                 rows.AddRange(matching.Where(c => section.ShowParts || !c.Figure.IsPart).Chunk(Columns).Select(c => new CardRow(c)));
         }
 

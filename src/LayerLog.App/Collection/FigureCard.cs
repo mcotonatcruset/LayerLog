@@ -18,14 +18,13 @@ public sealed partial class FigureCard(Figure figure, Action markedChanged) : Ob
 
     [ObservableProperty] private BitmapImage? thumbnail;
     [ObservableProperty] private bool isSelected;
-    [ObservableProperty] private bool isRenaming;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(Spoken))] private bool isMarked;
 
     public string Extension => Path.GetExtension(Figure.RelativePath).TrimStart('.').ToUpperInvariant();
     public string PartLabel => Figure.IsPart ? "Treure de les peces" : "Marcar com a peça";
 
     public string? RatingStars => Figure.Stats.BestRating is { } rating ? Stars.Text(rating) : null;
-    public string? RatingNote => Figure.Stats is { Attempts: > 0, BestRating: null } ? Stars.Spoken(null) : null;
+    public string? RatingNote => Figure.Stats is { Prints: > 0, BestRating: null } ? Stars.Spoken(null) : null;
 
     public string Detail
     {
@@ -35,8 +34,8 @@ public sealed partial class FigureCard(Figure figure, Action markedChanged) : Ob
             var state = stats.Attempts switch
             {
                 0 => AttemptText.State(0),
-                1 => "1 intent",
-                var n => $"{n} intents",
+                1 => $"1 intent · {AttemptText.State(stats.Prints)}",
+                var n => $"{n} intents · {AttemptText.State(stats.Prints)}",
             };
             if (stats.BestProfile is { } profile) state += $" · millor: {Profiles.Short(profile)}";
             return Figure.IsPart ? $"Peça · {state}" : state;
