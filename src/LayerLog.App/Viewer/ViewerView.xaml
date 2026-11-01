@@ -84,7 +84,7 @@
   </UserControl.Resources>
 
   <Grid>
-    <hx:Viewport3DX x:Name="View" BackgroundColor="#17181B" ShowCoordinateSystem="False" ShowViewCube="False" EnableSwapChainRendering="False"
+    <hx:Viewport3DX x:Name="View" BackgroundColor="#233D47" ShowCoordinateSystem="False" ShowViewCube="False" EnableSwapChainRendering="False"
                     FXAALevel="Low" CameraRotationMode="Turntable" ZoomExtentsWhenLoaded="False" IsChangeFieldOfViewEnabled="False"
                     AutomationProperties.Name="Vista 3D de la figura">
       <hx:Viewport3DX.InputBindings>
@@ -95,29 +95,10 @@
       <hx:AmbientLight3D Color="#6A6A6A"/>
       <hx:DirectionalLight3D Color="#5A5854" Direction="-0.25,-1,-0.35"/>
       <hx:DirectionalLight3D Color="#3C3C40" Direction="{Binding Camera.LookDirection, ElementName=View}"/>
-      <hx:MeshGeometryModel3D x:Name="Floor"/>
+      <hx:ScreenQuadModel3D x:Name="Sweep"/>
+      <hx:MeshGeometryModel3D x:Name="ContactShadow" IsTransparent="True"/>
       <hx:MeshGeometryModel3D x:Name="Mesh" CullMode="Back"/>
     </hx:Viewport3DX>
-
-    <!-- Soft fades keep the side text readable when a zoomed model passes behind it -->
-    <Rectangle HorizontalAlignment="Left" Width="420" IsHitTestVisible="False">
-      <Rectangle.Fill>
-        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-          <GradientStop Color="#C017181B" Offset="0"/>
-          <GradientStop Color="#9017181B" Offset="0.7"/>
-          <GradientStop Color="#0017181B" Offset="1"/>
-        </LinearGradientBrush>
-      </Rectangle.Fill>
-    </Rectangle>
-    <Rectangle HorizontalAlignment="Right" Width="420" IsHitTestVisible="False">
-      <Rectangle.Fill>
-        <LinearGradientBrush StartPoint="1,0" EndPoint="0,0">
-          <GradientStop Color="#C017181B" Offset="0"/>
-          <GradientStop Color="#9017181B" Offset="0.7"/>
-          <GradientStop Color="#0017181B" Offset="1"/>
-        </LinearGradientBrush>
-      </Rectangle.Fill>
-    </Rectangle>
 
     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="340" IsHitTestVisible="False" Effect="{StaticResource SceneShadow}">
       <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}" TextAlignment="Center" FontSize="14"
@@ -129,7 +110,7 @@
     </StackPanel>
 
     <!-- Explorer: text on the scene itself, with no container behind it -->
-    <DockPanel HorizontalAlignment="Left" Width="320" Margin="12,56,0,20">
+    <DockPanel HorizontalAlignment="Left" Width="320" Margin="12,60,0,20">
       <DockPanel DockPanel.Dock="Top" Margin="8,0,8,8" Effect="{StaticResource SceneShadow}">
         <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Canviar" Command="{Binding ChangeFolderCommand}" AutomationProperties.Name="Canviar la carpeta de models"/>
         <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Plegar" Command="{Binding CollapseAllCommand}" Margin="0,0,10,0" AutomationProperties.Name="Plegar totes les carpetes" ToolTip="Plegar totes les carpetes"/>

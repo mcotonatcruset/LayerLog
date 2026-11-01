@@ -7,8 +7,11 @@ using System.Windows.Media.Media3D;
 using HelixToolkit;
 using HelixToolkit.Maths;
 using HelixToolkit.SharpDX;
+using HelixToolkit.SharpDX.Shaders;
 using HelixToolkit.Wpf.SharpDX;
 using LayerLog.Core.Models;
+using SharpDX.DXGI;
+using DiffuseMaterial = HelixToolkit.Wpf.SharpDX.DiffuseMaterial;
 using MeshGeometry3D = HelixToolkit.SharpDX.MeshGeometry3D;
 using PerspectiveCamera = HelixToolkit.Wpf.SharpDX.PerspectiveCamera;
 
@@ -33,13 +36,15 @@ public partial class ViewerView : UserControl
         View.Camera = camera;
         Mesh.Material = new PhongMaterial
         {
-            DiffuseColor = new Color4(0.9f, 0.87f, 0.8f, 1),
-            AmbientColor = new Color4(0.9f, 0.87f, 0.8f, 1),
+            DiffuseColor = new Color4(ModelThumbnail.Ivory.R, ModelThumbnail.Ivory.G, ModelThumbnail.Ivory.B, 1),
+            AmbientColor = new Color4(ModelThumbnail.Ivory.R, ModelThumbnail.Ivory.G, ModelThumbnail.Ivory.B, 1),
             SpecularColor = new Color4(0.12f, 0.12f, 0.12f, 1),
             SpecularShininess = 18,
         };
-        Floor.Material = new VertColorMaterial();
-        Floor.CullMode = SharpDX.Direct3D11.CullMode.None;
+        Sweep.Texture = BuildSweep();
+        Sweep.SamplerDescription = DefaultSamplers.PointSamplerWrap; // keeps the dither intact at any window size
+        ContactShadow.Material = new DiffuseMaterial { DiffuseMap = BuildShadowTexture() };
+        ContactShadow.CullMode = SharpDX.Direct3D11.CullMode.None;
         View.PreviewMouseDown += (_, _) => StopTurning();
         View.PreviewMouseWheel += (_, _) => StopTurning();
         DataContextChanged += (_, e) =>
@@ -67,6 +72,8 @@ public partial class ViewerView : UserControl
         var old = Mesh.Geometry;
         Mesh.Geometry = null;
         (old as IDisposable)?.Dispose();
+        (ContactShadow.Geometry as IDisposable)?.Dispose();
+        ContactShadow.Geometry = null; // no figure, no shadow
         StopTurning();
         if (mesh is null) return;
 
@@ -92,44 +99,71 @@ public partial class ViewerView : UserControl
         return new MeshGeometry3D { Positions = positions, Normals = normals, Indices = indices };
     }
 
-    // A soft pool of light on the floor: unlit, fading to the background colour at the rim.
-    static MeshGeometry3D BuildFloor(float span)
+    // The studio sweep, drawn once as a screen-sized picture behind the scene. The camera orbits, so a wall in the scene
+    // would swing away, and a gradient this slow bands in 8 bits without the dither.
+    // ponytail: the sweep ignores a tilted or panned view; move it with the camera if that ever looks wrong
+    static TextureModel BuildSweep()
     {
-        const int Segments = 96;
-        var rings = new (float Radius, Color4 Color)[]
+        const int Width = 1920, Height = 1080;
+        var pixels = new byte[Width * Height * 4];
+        var dither = new Random(5);
+        var at = 0;
+        for (var y = 0; y < Height; y++)
+            for (var x = 0; x < Width; x++)
+            {
+                var (u, v) = (x / (float)Width, y / (float)Height);
+                var floor = Glow((u - 0.5f) / 0.62f, (v - 0.68f) / 0.42f);
+                var wall = 0.6f * Glow((u - 0.5f) / 0.8f, (v - 0.4f) / 0.8f);
+                var light = 1 - (1 - floor) * (1 - wall);
+                var noise = dither.NextSingle() - dither.NextSingle(); // triangular, one level either way
+                pixels[at++] = (byte)(0x47 + (0x7D - 0x47) * light + noise + 0.5f);
+                pixels[at++] = (byte)(0x3D + (0x71 - 0x3D) * light + noise + 0.5f);
+                pixels[at++] = (byte)(0x23 + (0x4C - 0x23) * light + noise + 0.5f);
+                pixels[at++] = 255;
+            }
+        return new TextureModel(pixels, Format.B8G8R8A8_UNorm, Width, Height);
+    }
+
+    static float Glow(float x, float y)
+    {
+        var edge = 1 - MathF.Min(1, x * x + y * y);
+        return edge * edge * (3 - 2 * edge);
+    }
+
+    // A black blot, densest under the figure and gone at the rim. It sits on the floor of the scene so it turns with the figure.
+    static TextureModel BuildShadowTexture()
+    {
+        const int Size = 128;
+        var pixels = new byte[Size * Size * 4];
+        for (var y = 0; y < Size; y++)
+            for (var x = 0; x < Size; x++)
+            {
+                var (u, v) = (2f * x / (Size - 1) - 1, 2f * y / (Size - 1) - 1);
+                var fade = MathF.Max(0, 1 - u * u - v * v);
+                pixels[(y * Size + x) * 4 + 3] = (byte)(255 * 0.6f * fade * fade);
+            }
+        return new TextureModel(pixels, Format.B8G8R8A8_UNorm, Size, Size);
+    }
+
+    static MeshGeometry3D BuildContactShadow(float width, float depth)
+    {
+        var floor = -MathF.Max(width, depth) / 500;
+        return new MeshGeometry3D
         {
-            (0, new Color4(0.135f, 0.135f, 0.14f, 1)),
-            (span * 0.75f, new Color4(0.11f, 0.112f, 0.12f, 1)),
-            (span * 1.9f, new Color4(0.09f, 0.094f, 0.106f, 1)),
+            Positions = [new(-width, floor, -depth), new(width, floor, -depth), new(width, floor, depth), new(-width, floor, depth)],
+            TextureCoordinates = [new(0, 0), new(1, 0), new(1, 1), new(0, 1)],
+            Normals = [Vector3.UnitY, Vector3.UnitY, Vector3.UnitY, Vector3.UnitY],
+            Indices = [0, 1, 2, 0, 2, 3],
         };
-        var positions = new Vector3Collection();
-        var colors = new Color4Collection();
-        var indices = new IntCollection();
-        foreach (var (radius, color) in rings)
-            for (var s = 0; s < Segments; s++)
-            {
-                var a = s * MathF.Tau / Segments;
-                positions.Add(new Vector3(radius * MathF.Cos(a), -span / 500, radius * MathF.Sin(a)));
-                colors.Add(color);
-            }
-        for (var ring = 0; ring < rings.Length - 1; ring++)
-            for (var s = 0; s < Segments; s++)
-            {
-                int a = ring * Segments + s, b = ring * Segments + (s + 1) % Segments, c = a + Segments, d = b + Segments;
-                indices.Add(a); indices.Add(b); indices.Add(c);
-                indices.Add(b); indices.Add(d); indices.Add(c);
-            }
-        return new MeshGeometry3D { Positions = positions, Colors = colors, Indices = indices };
     }
 
     void Frame(StlMesh mesh)
     {
         double span = Math.Max(mesh.Size.Y, Math.Max(mesh.Size.X, mesh.Size.Z));
-        (Floor.Geometry as IDisposable)?.Dispose();
-        Floor.Geometry = BuildFloor((float)span);
+        ContactShadow.Geometry = BuildContactShadow(mesh.Size.X * 0.8f, mesh.Size.Z * 0.8f);
         target = new Point3D(0, mesh.Size.Y * 0.47, 0);
-        orbitRadius = span * 4.4;
-        orbitHeight = span * 1.05;
+        orbitRadius = span * 3.2; // leaves a figure as tall as it is wide at over 60 % of the view
+        orbitHeight = span * 0.76;
         angle = 0.42;
         camera.UpDirection = new Vector3D(0, 1, 0); // dragging the view tilts it, and a new figure starts level
         camera.FarPlaneDistance = span * 40;

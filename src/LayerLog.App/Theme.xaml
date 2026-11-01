@@ -102,6 +102,41 @@
     </Setter>
   </Style>
 
+  <!-- Flush with the window corner, so the focus ring goes inside -->
+  <Style x:Key="CaptionFocus">
+    <Setter Property="Control.Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Rectangle Margin="3,8" Stroke="{StaticResource Ink}" StrokeThickness="2" RadiusX="6" RadiusY="6" IsHitTestVisible="False"/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="CaptionButton" TargetType="Button">
+    <Setter Property="FocusVisualStyle" Value="{StaticResource CaptionFocus}"/>
+    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+    <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+    <Setter Property="FontSize" Value="10"/>
+    <Setter Property="Width" Value="46"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="B" Background="Transparent">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="B" Property="Background" Value="{StaticResource Hover}"/>
+            </Trigger>
+            <Trigger Property="IsPressed" Value="True">
+              <Setter TargetName="B" Property="Background" Value="{StaticResource Line}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <Style x:Key="LinkButton" TargetType="ButtonBase">
     <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
     <Setter Property="Foreground" Value="{StaticResource Ink}"/>
