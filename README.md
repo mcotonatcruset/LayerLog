@@ -13,7 +13,7 @@ Tuning a slicer until a figure comes out right takes a lot of trial and error, a
 The interface is in Catalan; the names below are its own.
 
 - **Collection (Col·lecció):** every figure in your model folder as a card with its picture, name and how it went (attempts, prints, best rating). Recents first, then one collapsible section per folder. The folder and the last figure are remembered, and models are refreshed without reopening.
-- **Search and filters:** `Ctrl+K` searches figures, files and folders. Filter by All, Printed (*Impreses*) or Not printed (*Sense imprimir*).
+- **Search and filters:** `Ctrl+K` searches by name and path (figures, files and folders). Filter by *Totes*, Printed (*Impreses*) or Not printed (*Sense imprimir*).
 - **Names and parts:** a figure is named after its file. Rename it (`F2`) and the name follows the model if you move it. Mark pieces as parts (`P`) to hide them from the grid; nothing is guessed from file names.
 - **Figure:** a full-window 3D scene with a side panel. It opens on *El que va funcionar*, the best-rated print with its note and what you changed, followed by the other attempts.
 - **Attempts (intents) and prints:** each gcode is an attempt, and one attempt can have many prints, each with a date, a rating, a note and a photo.
@@ -62,6 +62,6 @@ A few decisions worth a look:
 - **Config comes from the gcode itself.** Creality Print writes about 600 settings at the end of each file, so history needs no integration with the slicer.
 - **Each entry stores its own comparison.** Profiles change over time and between versions, so results are frozen at import. If the exact profile version is not on disk, the nearest one is used and the entry says so.
 - **Interrupted imports are safe.** Card locations are replaced only after a full pass, so pulling a card out mid-import loses nothing.
-- **Large models and folders stay smooth.** A 1 million triangle STL orbits at 145 FPS on an RTX 5060 Ti. The grid is virtualized and files are parsed off the UI thread, so a folder of 1,000 models shows its first screen in about two seconds and scrolls without stalls while thumbnails fill in, cached on disk after the first time.
+- **Large models and folders stay smooth.** The grid is virtualized and files are parsed off the UI thread. Measured, one reading each: a 1.05 million triangle STL orbited at 145 FPS at 1500×900 on an RTX 5060 Ti; a folder of 1,000 copies of a small generated model showed its first card in about two seconds, and its thumbnails took about 38 s to generate (cached on disk after the first time).
 
 `docs/superpowers` holds the design document and the implementation plan.

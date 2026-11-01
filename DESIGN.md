@@ -97,7 +97,7 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 
 - Cobreix la columna de l'escena, en `Sweep` opac: la figura en pausa no es transparenta. «Tornar a l'intent» queda a dalt amb el focus; Esc fa el mateix.
 - Es comparen dos gcodes de la mateixa figura o de fora, des de «Comparar amb…» al panell d'intent. La llista s'obre amb el focus a la primera opció: fletxes, Retorn i Esc.
-- Capçalera amb una miniatura de 72 px per intent, i el títol de l'avís és `LiveSetting=Polite`. Les diferències fan servir les files del panell de figura; les que no canvien es pleguen.
+- Capçalera amb una miniatura de 72 px per intent, i el títol de l'avís és `LiveSetting=Polite`. Cada diferència és una fila `CompareItem`; els paràmetres sense etiqueta coneguda es pleguen sota «paràmetres més».
 - Si la comparació és aproximada o falta el perfil base, ho diu amb el mateix avís de sempre.
 - En tancar-la, el focus torna a «Comparar amb…».
 
@@ -124,7 +124,7 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - Tab recorre la barra primer, després la pantalla, i torna a començar. Cada pantalla és un grup `TabNavigation="Local"`; la vista 3D no és parada de tabulador.
 - Cap control porta el rectangle puntejat per defecte de WPF: tots fan servir `FocusRing` o la seva variant.
 
-- Focus de teclat visible a tots els controls: anell `Ink` de 2 px. Als botons de la finestra l'anell va per dins, perquè toquen la vora. Els camps de text i les files de l'arbre no fan servir l'anell: mostren el focus amb una vora `Ink`.
+- Focus de teclat visible a tots els controls: anell `Ink` de 2 px. Als botons de la finestra l'anell va per dins, perquè toquen la vora. Els camps de text no fan servir l'anell: mostren el focus amb una vora `Ink`.
 - Tots els botons de la finestra tenen nom accessible en català: Minimitzar, Maximitzar o Restaurar, i Tancar.
 - La rotació automàtica no s'activa si Windows demana reduir les animacions.
 

@@ -312,8 +312,9 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
     void ShowEmptyState(int found = 0)
     {
-        NeedsFolder = ModelFolder is null || models.Count == 0;
+        NeedsFolder = ModelFolder is null || (scanned && models.Count == 0);
         Message = ModelFolder is null ? "Tria una carpeta de models per començar."
+            : !scanned ? null // not known yet: neither «empty» nor «no match» is true
             : models.Count == 0 ? "Aquesta carpeta no té cap model."
             : found == 0 ? "Cap figura coincideix amb la cerca." : null;
     }
