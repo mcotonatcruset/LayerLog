@@ -9,7 +9,7 @@
       <ColumnDefinition Width="Auto"/>
     </Grid.ColumnDefinitions>
     <hx:Viewport3DX x:Name="View" BackgroundColor="#233D47" ShowCoordinateSystem="False" ShowViewCube="False" EnableSwapChainRendering="False"
-                    FXAALevel="Low" CameraRotationMode="Turntable" ZoomExtentsWhenLoaded="False" IsChangeFieldOfViewEnabled="False"
+                    FXAALevel="Low" IsTabStop="False" CameraRotationMode="Turntable" ZoomExtentsWhenLoaded="False" IsChangeFieldOfViewEnabled="False"
                     AutomationProperties.Name="Vista 3D de la figura">
       <hx:Viewport3DX.InputBindings>
         <MouseBinding Command="hx:ViewportCommands.Rotate" Gesture="LeftClick"/>

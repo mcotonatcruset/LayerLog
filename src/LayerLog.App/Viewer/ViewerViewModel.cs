@@ -152,8 +152,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
         BestAttempt = rows.FirstOrDefault(r => r.GcodeId == entry?.Id);
         if (!ShowOrphan) SelectedAttempt = rows.FirstOrDefault(r => r.GcodeId == SelectedAttempt?.GcodeId);
         AttemptsTitle = others.Count == 0 ? null : best is null ? "Intents" : "Altres intents";
-        Attempts.Clear();
-        foreach (var row in others) Attempts.Add(row);
+        ListSync.Apply(Attempts, others, (a, b) => a == b); // rows that didn't change keep their buttons, and the keyboard on them
 
         BestChanges.Clear();
         BestStars = best is null ? null : Stars.Text(best.Rating);

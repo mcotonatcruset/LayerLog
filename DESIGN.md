@@ -72,8 +72,10 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - Targetes de Recents: fons `CardGlow`, imatge de 250 px. Targetes de carpeta: fons `Card`, imatge de 130 px a l'esquerra. Separació de 16 px, radi de 10 px.
 - Les miniatures es descodifiquen a la mida en què es mostren, multiplicada pels DPI i amb un màxim de 320 px.
 - La figura oberta porta una vora `Muted` de 2 px. El focus és l'anell `Ink`, 3 px per fora.
-- Clic o Retorn obren la figura. Espai la selecciona per enviar-la. F2 li canvia el nom. La casella només apareix en passar el ratolí, amb focus o si està marcada.
-- Les files de «Sense figura» obren el gcode al panell d'intent.
+- Clic o Retorn obren la figura. Espai la selecciona per enviar-la. F2 li canvia el nom. P la marca o desmarca com a peça. La casella només apareix en passar el ratolí, amb focus o si està marcada.
+- Les files de «Sense figura» obren el gcode al panell d'intent. Sense carpeta de models també es poden obrir: la llista és només aquesta, amb el missatge i «Triar una carpeta» a sobre.
+- Les fletxes recorren files i seccions: amunt i avall visiten cada fila amb alguna cosa per enfocar (targetes, capçaleres de carpeta i gcodes sense figura) i recorden la columna; esquerra i dreta passen de targeta en targeta i salten a la fila següent. Una fila fora de la vista es porta a la vista abans d'enfocar-la.
+- En tornar d'una figura, el focus va a la seva targeta, amb preferència per la còpia de la carpeta sobre la de Recents. Si s'ha tancat un gcode sense figura, va a la seva fila. En marcar una peça que deixa de veure's, va a la targeta veïna.
 - La barra d'enviament és `Panel`, a la part inferior, i només hi és amb alguna figura seleccionada.
 
 ## Panell de figura
@@ -91,12 +93,48 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - La figura oberta i la recordada no canvien: Esc hi torna, o a Col·lecció si no n'hi havia.
 - Esborrar una impressió es confirma a la mateixa fila: un text amb el que es perd, i «Cancel·lar» amb el focus. Esc cancel·la.
 
+## Comparació
+
+- Cobreix la columna de l'escena, en `Sweep` opac: la figura en pausa no es transparenta. «Tornar a l'intent» queda a dalt amb el focus; Esc fa el mateix.
+- Es comparen dos gcodes de la mateixa figura o de fora, des de «Comparar amb…» al panell d'intent. La llista s'obre amb el focus a la primera opció: fletxes, Retorn i Esc.
+- Capçalera amb una miniatura de 72 px per intent, i el títol de l'avís és `LiveSetting=Polite`. Les diferències fan servir les files del panell de figura; les que no canvien es pleguen.
+- Si la comparació és aproximada o falta el perfil base, ho diu amb el mateix avís de sempre.
+- En tancar-la, el focus torna a «Comparar amb…».
+
 ## Miniatures
 
 320 × 320 px, renderitzades per programari amb l'ivori de les figures i fons transparent. La mida forma part del nom del fitxer, de manera que canviar-la les regenera.
 
 ## Interacció
 
+### Teclat
+
+| Tecla | Fa |
+|---|---|
+| Ctrl+K | Cerca. Des d'una figura torna a la col·lecció |
+| Fletxa avall o Retorn a la cerca | Entra a la graella |
+| Fletxes a la graella | Es mouen per targetes, capçaleres i gcodes sense figura |
+| Retorn | Obre la targeta, la fila o l'intent |
+| Espai | Selecciona la targeta per enviar-la |
+| P | Marca o desmarca la peça |
+| F2 | Canvia el nom |
+| Ctrl+Retorn | Envia a Creality Print: la figura oberta, les seleccionades, o la de la targeta amb el focus |
+| Esc | Tanca el que hi ha obert: llista de comparació, comparació, intent, figura. A la col·lecció buida la cerca |
+
+- Tab recorre la barra primer, després la pantalla, i torna a començar. Cada pantalla és un grup `TabNavigation="Local"`; la vista 3D no és parada de tabulador.
+- Cap control porta el rectangle puntejat per defecte de WPF: tots fan servir `FocusRing` o la seva variant.
+
 - Focus de teclat visible a tots els controls: anell `Ink` de 2 px. Als botons de la finestra l'anell va per dins, perquè toquen la vora. Els camps de text i les files de l'arbre no fan servir l'anell: mostren el focus amb una vora `Ink`.
 - Tots els botons de la finestra tenen nom accessible en català: Minimitzar, Maximitzar o Restaurar, i Tancar.
 - La rotació automàtica no s'activa si Windows demana reduir les animacions.
+
+### Moviment
+
+- Una sola transició, de Col·lecció a Figura: la vista de la figura apareix en 160 ms (`DoubleAnimation` d'opacitat, `QuadraticEase`). No s'anima en tornar, ni en obrir la figura recordada a l'arrencada.
+- Si `SystemParameters.ClientAreaAnimation` és fals, no hi ha transició ni rotació.
+
+### Estats
+
+- Sense carpeta: el missatge i «Triar una carpeta». Carpeta buida, cap resultat de la cerca, figura sense intents: cadascun amb el seu text.
+- 3MF: a la targeta es queda l'etiqueta del tipus de fitxer; a l'escena, la píndola «La previsualització de 3MF encara no està disponible.»
+- Importació de l'SD: la barra diu «SD ... · important…», després «importada» o «importació interrompuda», fins que es retira la targeta. És `LiveSetting=Polite`, igual que els avisos.

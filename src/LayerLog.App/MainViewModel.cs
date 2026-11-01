@@ -19,6 +19,7 @@ public sealed partial class MainViewModel : ObservableObject
     readonly GcodeImporter importer;
     readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(8) };
     readonly Dictionary<string, string> cards = [];
+    readonly Dictionary<string, string> imports = []; // per card: what the bar says while it imports, and after
     Action? toastAction;
 
     public CollectionViewModel Collection { get; }
@@ -52,9 +53,13 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async void OnCardChanged(string root, string? serial)
     {
-        if (serial is null) cards.Remove(root);
+        if (serial is null)
+        {
+            cards.Remove(root);
+            imports.Remove(root);
+        }
         else cards[root] = serial;
-        CardStatus = cards.Count == 0 ? "Cap SD connectada" : string.Join(" · ", cards.Select(c => $"SD {c.Value} · {c.Key.TrimEnd('\\')}"));
+        ShowCardStatus();
         if (serial is not null) await ImportAsync(root, serial);
     }
 
@@ -63,9 +68,20 @@ public sealed partial class MainViewModel : ObservableObject
         if (cards.TryGetValue(root, out var serial)) await ImportAsync(root, serial);
     }
 
+    void ShowCardStatus() =>
+        CardStatus = cards.Count == 0 ? "Cap SD connectada"
+            : string.Join(" · ", cards.Select(c => $"SD {c.Value} · {imports.GetValueOrDefault(c.Key) ?? c.Key.TrimEnd('\\')}"));
+
     async Task ImportAsync(string root, string serial)
     {
+        imports[root] = "important…";
+        ShowCardStatus();
         var result = await importer.ImportAsync(root, serial, CancellationToken.None);
+        if (cards.ContainsKey(root))
+        {
+            imports[root] = result.Interrupted ? "importació interrompuda" : "importada";
+            ShowCardStatus();
+        }
         await Collection.LinkModelsAsync();
         if (result.Added > 0)
         {
@@ -139,6 +155,7 @@ public sealed partial class MainViewModel : ObservableObject
     void OpenOrphan(long gcodeId)
     {
         ShowFigureNow();
+        Collection.RememberOrphan(gcodeId);
         Viewer.OpenOrphan(gcodeId);
     }
 
