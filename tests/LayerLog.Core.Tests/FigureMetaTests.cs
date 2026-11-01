@@ -72,8 +72,57 @@ public sealed class FigureMetaTests : IDisposable
         var a = Put("a.stl", "first");
         SetAlias(a, "Totoro");
         Put("a.stl", "second, longer");
+        Put("copy.stl", "first"); // looks like the old content moved: must not steal the alias from a model that is still there
         repo.RelinkMovedModels(root, ModelLibrary.Scan(root));
-        Assert.Equal("Totoro", repo.FigureMetas()[a].Alias);
+        var metas = repo.FigureMetas();
+        Assert.Equal("Totoro", metas[a].Alias);
+        Assert.DoesNotContain("copy.stl", metas.Keys);
+    }
+
+    [Fact]
+    public void Moved_model_keeps_its_part_flag()
+    {
+        var a = Put("a.stl", "same content");
+        repo.SetIsPart(a, ModelLibrary.HashFile(Path.Combine(root, a)), new FileInfo(Path.Combine(root, a)).Length, true);
+        File.Delete(Path.Combine(root, a));
+        var moved = Put(Path.Combine("b", "a.stl"), "same content");
+        repo.RelinkMovedModels(root, ModelLibrary.Scan(root));
+        Assert.True(repo.FigureMetas()[moved].IsPart);
+    }
+
+    [Fact]
+    public void Stale_link_plus_fresh_alias_then_move()
+    {
+        var a = Put("a.stl", "v1 content");
+        var id = repo.Add("g", "a.gcode", HistoryRepositoryTests.Info("a.stl"), HistoryRepositoryTests.Comparison);
+        repo.LinkObject(id, "a.stl", a, ModelLibrary.HashFile(Path.Combine(root, a)), false, new FileInfo(Path.Combine(root, a)).Length);
+        Put("a.stl", "v2 content, edited");
+        SetAlias(a, "Nom");
+        File.Delete(Path.Combine(root, a));
+        var moved = Put(Path.Combine("sub", "a.stl"), "v2 content, edited");
+        repo.RelinkMovedModels(root, ModelLibrary.Scan(root));
+        Assert.Equal("Nom", repo.FigureMetas()[moved].Alias);
+    }
+
+    [Fact]
+    public void Case_only_rename_follows()
+    {
+        var a = Put("totoro.stl", "x");
+        var id = repo.Add("g", "a.gcode", HistoryRepositoryTests.Info("totoro.stl"), HistoryRepositoryTests.Comparison);
+        repo.LinkObject(id, "totoro.stl", a, ModelLibrary.HashFile(Path.Combine(root, a)), false, 1);
+        SetAlias(a, "Nom");
+        File.Move(Path.Combine(root, a), Path.Combine(root, "Totoro.stl"));
+        var scan = ModelLibrary.Scan(root);
+        repo.RelinkMovedModels(root, scan);
+        Assert.Equal("Nom", repo.FigureMetas()["Totoro.stl"].Alias);
+        Assert.Empty(repo.EntriesWithoutFigure(scan.Select(m => m.RelativePath).ToHashSet()));
+    }
+
+    [Fact]
+    public void Gcode_with_no_object_links_is_without_figure()
+    {
+        repo.Add("g", "a.gcode", HistoryRepositoryTests.Info("x.stl") with { Objects = [] }, HistoryRepositoryTests.Comparison);
+        Assert.Single(repo.EntriesWithoutFigure(new HashSet<string>()));
     }
 
     [Fact]

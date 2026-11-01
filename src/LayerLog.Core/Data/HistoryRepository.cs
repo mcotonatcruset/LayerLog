@@ -61,17 +61,9 @@ public sealed class HistoryRepository
         tx.Commit();
     }
 
-    public IReadOnlyList<GcodeEntry> List(string? search = null)
-    {
-        var filter = string.IsNullOrWhiteSpace(search) ? "" :
-            "WHERE g.file_name LIKE $0 OR EXISTS (SELECT 1 FROM gcode_object o WHERE o.gcode_id = g.id AND o.name LIKE $0)";
-        return Entries(filter, string.IsNullOrWhiteSpace(search) ? [] : [$"%{search}%"]);
-    }
+    public IReadOnlyList<GcodeEntry> List() => Entries("", []);
 
     public GcodeEntry Get(long id) => Entries("WHERE g.id = $0", [id]).Single();
-
-    public IReadOnlyList<GcodeEntry> ListForObject(string objectName) =>
-        Entries("WHERE EXISTS (SELECT 1 FROM gcode_object o WHERE o.gcode_id = g.id AND o.name = $0)", [objectName]);
 
     IReadOnlyList<GcodeEntry> Entries(string filter, object?[] args)
     {
@@ -162,7 +154,9 @@ public sealed class HistoryRepository
         using (var r = Command(c, "SELECT relative_path, model_hash, model_size FROM figure_meta").ExecuteReader())
             while (r.Read()) metaLinks.Add((r.GetString(0), r.GetString(1), r.GetInt64(2)));
 
-        foreach (var link in links.Concat(metaLinks).Where(l => !File.Exists(Path.Combine(root, l.Path))).DistinctBy(l => l.Path))
+        // Missing means not among the scanned paths (ordinal), so a case-only rename relinks; Distinct keeps a stale link hash and a fresh meta hash for one path.
+        var paths = models.Select(m => m.RelativePath).ToHashSet(StringComparer.Ordinal);
+        foreach (var link in links.Concat(metaLinks).Where(l => !paths.Contains(l.Path)).Distinct())
         {
             var moved = models.FirstOrDefault(m => m.Size == link.Size && ModelLibrary.HashFile(Path.Combine(root, m.RelativePath)) == link.Hash);
             if (moved is null) continue;

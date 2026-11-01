@@ -54,6 +54,7 @@ static class Database
         """;
 
     const string FigureMeta = """
+        BEGIN;
         CREATE TABLE figure_meta (
             relative_path TEXT PRIMARY KEY,
             model_hash TEXT NOT NULL,
@@ -62,6 +63,7 @@ static class Database
             is_part INTEGER NOT NULL DEFAULT 0
         );
         PRAGMA user_version = 3;
+        COMMIT;
         """;
 
     public static SqliteConnection Open(string path)
