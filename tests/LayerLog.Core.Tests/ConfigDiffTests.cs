@@ -54,22 +54,4 @@ public class ConfigDiffTests
         Assert.Contains(c, x => x is { Key: "wall_loops", Base: "2", Value: "4" });
         Assert.DoesNotContain(c, x => x.Key == "sparse_infill_density");
     }
-
-    [Fact]
-    public void Between_ignores_identity_and_time_keys()
-    {
-        var a = new Dictionary<string, string>
-        {
-            ["printer_settings_id"] = "a", ["inherits_group"] = "a", ["filename_format"] = "a", ["machine_start_gcode"] = "a", ["creality_uuid"] = "a", ["version"] = "a", ["print_time"] = "a",
-        };
-        var b = a.ToDictionary(p => p.Key, _ => "b");
-        Assert.Empty(ConfigDiff.Between(a, b));
-    }
-
-    [Fact]
-    public void Between_reports_real_differences()
-    {
-        var c = ConfigDiff.Between(Gcode("custom-profile.gcode").Config, Gcode("system-profile.gcode").Config);
-        Assert.Contains(c, x => x is { Key: "layer_height", Base: "0.08", Value: "0.16" });
-    }
 }

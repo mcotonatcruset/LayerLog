@@ -13,19 +13,30 @@ using Microsoft.Win32;
 
 namespace LayerLog.App.Viewer;
 
-public sealed record ChangeRow(string Label, string Base, string Value);
-public sealed record ChangeGroup(string Caption, IReadOnlyList<ChangeRow> Rows);
-public sealed record CompareRow(string Label, string A, string B);
+public sealed record ChangeRow(string Label, string Base, string Value)
+{
+    public override string ToString() => $"{Label}: {Base} → {Value}";
+}
+public sealed record ChangeGroup(string Caption, IReadOnlyList<ChangeRow> Rows)
+{
+    public override string ToString() => Caption;
+}
+public sealed record CompareRow(string Label, string A, string B)
+{
+    public override string ToString() => $"{Label}: {A}, {B}";
+}
 /// <param name="Group">The figure's attempts or the other gcode: the selector's two headings.</param>
 public sealed record CompareChoice(long GcodeId, string FileName, string Detail, string Group)
 {
     public string Name => $"{FileName}, {Detail}";
+    public override string ToString() => Name;
 }
 
 public sealed partial class FigureLink(AttemptViewModel owner, ObjectLink link, bool isLinked) : ObservableObject
 {
     public string Name => link.Name;
     public bool IsLinked => isLinked;
+    public override string ToString() => link.Name;
 
     [RelayCommand]
     void Open() => owner.OpenFigure(link.ModelPath!);
@@ -68,6 +79,10 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     [ObservableProperty] private BitmapImage? thumbA;
     [ObservableProperty] private BitmapImage? thumbB;
     [ObservableProperty] private string? compareNote;
+    [ObservableProperty] private string? compareCaution;
+    [ObservableProperty] private bool canCompare;
+    public string CompareHint => CanCompare ? "Comparar amb un altre gcode" : "No hi ha cap altre gcode";
+    partial void OnCanCompareChanged(bool value) => OnPropertyChanged(nameof(CompareHint));
     long comparedId;
 
     public ObservableCollection<CompareRow> CompareRows { get; } = [];
@@ -91,6 +106,7 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
         var total = e.ProcessChanges.Count + e.FilamentChanges.Count;
         ChangesTitle = $"Què vas canviar ({total})";
         Caution = AttemptText.Caution(e);
+        CanCompare = repository.List().Count > 1;
 
         Changes.Clear();
         AddGroup(e.ProcessProfile, e.ProcessChanges);
@@ -208,15 +224,14 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
 
         (ThumbA, ThumbB, NameA, NameB) = (Images.From(a.Thumbnail), Images.From(b.Thumbnail), a.FileName, b.FileName);
         CompareNote = result.NoConfig ? "Aquest gcode no té configuració" : null;
-        CompareTitle = result.NoConfig ? "No es poden comparar" : result.Differing + result.OneSided == 0 ? "Cap diferència entre aquests dos gcode"
-            : (result.Differing == 1 ? "1 diferència" : $"{result.Differing} diferències")
-              + (result.OneSided > 0 ? $" i {result.OneSided} {(result.OneSided == 1 ? "paràmetre" : "paràmetres")} només en un gcode" : "");
+        CompareTitle = AttemptText.ComparisonTitle(result);
+        CompareCaution = AttemptText.ComparisonCaution(a, b);
         CompareRows.Clear();
         foreach (var s in known) CompareRows.Add(new CompareRow(s.Label, s.A, s.B));
         CompareRows.Add(new CompareRow("Millor valoració", Best(a.Id), Best(b.Id)));
         CompareRest.Clear();
         foreach (var s in rest) CompareRest.Add(new CompareRow(s.Label, s.A, s.B));
-        CompareRestTitle = rest.Count == 0 ? null : known.Count == 0 ? $"Mostrar {rest.Count} paràmetres" : $"{rest.Count} paràmetres més";
+        CompareRestTitle = AttemptText.RestTitle(rest.Count, known.Count);
     }
 
     string Best(long id) => repository.BestPrint([id])?.Rating is { } r ? $"{Stars.Text(r)}  {Stars.Spoken(r)}" : Stars.Text(null);

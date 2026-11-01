@@ -13,6 +13,7 @@ public sealed partial class StarChoice(int value) : ObservableObject
 {
     public int Value { get; } = value;
     public string Spoken { get; } = $"Valorar amb {value} de 5";
+    public override string ToString() => Spoken;
 
     [ObservableProperty] private string glyph = "☆";
 }
@@ -40,6 +41,7 @@ public sealed partial class PrintRow : ObservableObject
         PaintStars();
     }
 
+    public override string ToString() => $"Impressió, {RatingText}";
     public string RatingText => Stars.Spoken(record.Rating);
 
     public IReadOnlyList<StarChoice> Choices { get; } = [.. Enumerable.Range(1, 5).Select(n => new StarChoice(n))];

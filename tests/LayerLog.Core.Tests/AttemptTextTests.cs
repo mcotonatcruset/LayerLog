@@ -23,6 +23,35 @@ public class AttemptTextTests
         Assert.Equal(text, AttemptText.Caution(entry));
     }
 
+    [Theory]
+    [InlineData(0, 0, false, "Cap diferència entre aquests dos gcode")]
+    [InlineData(1, 0, false, "1 diferència")]
+    [InlineData(2, 1, false, "2 diferències i 1 paràmetre només en un gcode")]
+    [InlineData(0, 3, false, "3 paràmetres només en un gcode")]
+    [InlineData(0, 1, false, "1 paràmetre només en un gcode")]
+    [InlineData(0, 0, true, "No es poden comparar")]
+    public void Comparison_title_counts_in_the_singular_and_plural(int differing, int oneSided, bool noConfig, string text) =>
+        Assert.Equal(text, AttemptText.ComparisonTitle(new([], [], differing, oneSided, noConfig)));
+
+    [Theory]
+    [InlineData(0, 2, null)]
+    [InlineData(1, 0, "Mostrar 1 paràmetre")]
+    [InlineData(4, 0, "Mostrar 4 paràmetres")]
+    [InlineData(1, 2, "1 paràmetre més")]
+    [InlineData(3, 2, "3 paràmetres més")]
+    public void Rest_title_counts_in_the_singular_and_plural(int rest, int known, string? text) =>
+        Assert.Equal(text, AttemptText.RestTitle(rest, known));
+
+    [Fact]
+    public void Comparison_caution_shows_when_either_base_is_approximate()
+    {
+        GcodeEntry E(bool approximate) => new(1, "a.gcode", default, "7.0.1.2", null, null, "", "", new Dictionary<string, string>(), [], [], "6.3", approximate, false, null, [], []);
+        Assert.Null(AttemptText.ComparisonCaution(E(false), E(false)));
+        Assert.NotNull(AttemptText.ComparisonCaution(E(false), E(true)));
+        Assert.NotNull(AttemptText.ComparisonCaution(E(true), E(false)));
+        Assert.DoesNotContain("\n",AttemptText.ComparisonCaution(E(true), E(true)));
+    }
+
     [Fact]
     public void Pick_orders_by_importance_then_known_labels()
     {

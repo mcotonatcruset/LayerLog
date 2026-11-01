@@ -12,6 +12,7 @@ namespace LayerLog.App.Viewer;
 public sealed record AttemptRow(long GcodeId, string FileName, string Detail, string State, bool IsRated, string Spoken)
 {
     public string Name => $"{FileName}, {Spoken}";
+    public override string ToString() => Name;
 }
 
 public sealed partial class ViewerViewModel(HistoryRepository repository, CollectionViewModel collection, AttemptViewModel attempt) : ObservableObject
@@ -152,8 +153,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
         BestAttempt = rows.FirstOrDefault(r => r.GcodeId == entry?.Id);
         if (!ShowOrphan) SelectedAttempt = rows.FirstOrDefault(r => r.GcodeId == SelectedAttempt?.GcodeId);
         AttemptsTitle = others.Count == 0 ? null : best is null ? "Intents" : "Altres intents";
-        Attempts.Clear();
-        foreach (var row in others) Attempts.Add(row);
+        ListSync.Apply(Attempts, others, (a, b) => a == b); // rows that didn't change keep their buttons, and the keyboard on them
 
         BestChanges.Clear();
         BestStars = best is null ? null : Stars.Text(best.Rating);

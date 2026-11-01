@@ -6,7 +6,7 @@
     <ContextMenu x:Key="CardMenu">
       <MenuItem Header="Obrir" Click="OnMenuOpen"/>
       <MenuItem Header="Canviar el nom" InputGestureText="F2" Click="OnMenuRename"/>
-      <MenuItem Header="{Binding PartLabel}" Click="OnMenuPart"/>
+      <MenuItem Header="{Binding PartLabel}" InputGestureText="P" Click="OnMenuPart"/>
       <MenuItem Header="Seleccionar per enviar" InputGestureText="Espai" IsCheckable="True" IsChecked="{Binding IsMarked}"/>
     </ContextMenu>
 
@@ -219,8 +219,8 @@
 
   <DockPanel>
     <DockPanel DockPanel.Dock="Top" Margin="28,0,28,6">
-      <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Canviar" Command="{Binding ChangeFolderCommand}" AutomationProperties.Name="Canviar la carpeta de models"/>
-      <Button DockPanel.Dock="Right" Style="{StaticResource LinkButton}" Content="Plegar" Command="{Binding CollapseAllCommand}" Margin="0,0,14,0" AutomationProperties.Name="Plegar totes les carpetes" ToolTip="Plegar totes les carpetes"/>
+      <Button DockPanel.Dock="Right" KeyboardNavigation.TabIndex="1" Style="{StaticResource LinkButton}" Content="Canviar" Command="{Binding ChangeFolderCommand}" AutomationProperties.Name="Canviar la carpeta de models"/>
+      <Button DockPanel.Dock="Right" KeyboardNavigation.TabIndex="0" Style="{StaticResource LinkButton}" Content="Plegar" Command="{Binding CollapseAllCommand}" Margin="0,0,14,0" AutomationProperties.Name="Plegar totes les carpetes" ToolTip="Plegar totes les carpetes"/>
       <TextBlock Text="{Binding FolderText}" ToolTip="{Binding FolderText}" Style="{StaticResource MutedText}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Margin="0,0,14,0"/>
     </DockPanel>
 
@@ -239,8 +239,12 @@
     </Border>
 
     <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition/>
+      </Grid.RowDefinitions>
       <!-- ponytail: a virtualized list of rows, not a wrap panel; arrow keys only reach rows WPF has realized (one page around the view) -->
-      <ItemsControl x:Name="List" ItemsSource="{Binding Rows}" Focusable="False" SizeChanged="OnListResized"
+      <ItemsControl x:Name="List" Grid.Row="1" ItemsSource="{Binding Rows}" Focusable="False" SizeChanged="OnListResized" PreviewKeyDown="OnListKey"
                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.ScrollUnit="Pixel"
                     VirtualizingPanel.CacheLength="1" VirtualizingPanel.CacheLengthUnit="Page">
         <!-- The side margin is inside the scroll area, so the scroll viewport doesn't clip a focus ring -->
@@ -251,7 +255,7 @@
         </ItemsControl.ItemContainerStyle>
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
-            <VirtualizingStackPanel/>
+            <collection:RowPanel/>
           </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.Template>
@@ -263,7 +267,21 @@
         </ItemsControl.Template>
       </ItemsControl>
 
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}">
+      <!-- Centred over an empty list; above the rows when there are some, like the gcodes without a figure -->
+      <StackPanel HorizontalAlignment="Center" Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}">
+        <StackPanel.Style>
+          <Style TargetType="StackPanel">
+            <Setter Property="Grid.RowSpan" Value="2"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding HasRows}" Value="True">
+                <Setter Property="Grid.RowSpan" Value="1"/>
+                <Setter Property="VerticalAlignment" Value="Top"/>
+                <Setter Property="Margin" Value="0,20,0,8"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </StackPanel.Style>
         <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" AutomationProperties.LiveSetting="Polite"/>
         <Button Style="{StaticResource PrimaryButton}" Content="Triar una carpeta" Command="{Binding ChangeFolderCommand}" Margin="0,14,0,0" HorizontalAlignment="Center"
                 Visibility="{Binding NeedsFolder, Converter={StaticResource BoolToVisible}}"/>

@@ -19,14 +19,21 @@ public partial class AttemptPanel : UserControl
         };
     }
 
+    readonly HashSet<FrameworkElement> asking = [];
+
     // Opening starts on Cancel·lar, the first button, and cancelling returns to the «Esborrar» that asked.
+    // A row is built visible and then bound to collapsed, which also raises this: judged when it runs, that is nothing to move.
     void OnConfirmShown(object sender, DependencyPropertyChangedEventArgs e)
     {
         var confirm = (FrameworkElement)sender;
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
         {
-            if (e.NewValue is true) confirm.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
-            else (confirm.Tag as IInputElement)?.Focus();
+            if (confirm.IsVisible)
+            {
+                asking.Add(confirm);
+                confirm.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+            }
+            else if (asking.Remove(confirm)) (confirm.Tag as IInputElement)?.Focus();
         });
     }
 

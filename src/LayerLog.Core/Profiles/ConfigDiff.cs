@@ -13,9 +13,6 @@ public static partial class ConfigDiff
     public static IReadOnlyList<ConfigChange> Compare(IReadOnlyDictionary<string, string> baseValues, IReadOnlyDictionary<string, string> used) =>
         Changes(baseValues, used, IdentityKey());
 
-    public static IReadOnlyList<ConfigChange> Between(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b) =>
-        Changes(a, b, IgnoredBetween());
-
     public static bool IsIgnoredBetween(string key) => IgnoredBetween().IsMatch(key);
 
     static List<ConfigChange> Changes(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b, Regex skip) =>

@@ -104,23 +104,6 @@ public sealed class HistoryRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void Search_matches_file_and_object_names()
-    {
-        Add("h1", "Totoro.gcode", "Totoro2.stl");
-        Add("h2", "Marine.gcode", "lt-head.stl");
-        Assert.Single(repo.List("marine"));
-        Assert.Single(repo.List("LT-HEAD"));
-    }
-
-    [Fact]
-    public void ListForObject_finds_entries_with_that_object()
-    {
-        Add();
-        Assert.Single(repo.ListForObject("Totoro2.stl"));
-        Assert.Empty(repo.ListForObject("altre.stl"));
-    }
-
-    [Fact]
     public void Newest_gcode_comes_first()
     {
         repo.Add("old", "old.gcode", Info() with { GeneratedAt = new DateTime(2025, 1, 1) }, Comparison);

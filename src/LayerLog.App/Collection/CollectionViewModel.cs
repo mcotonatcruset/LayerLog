@@ -35,13 +35,26 @@ public sealed partial class CollectionSection(string folder, IEnumerable<FigureC
 
 // One flat list, so a single virtualized panel scrolls every section.
 public abstract record CollectionRow(string Key);
-public sealed record HeaderRow(string Title, string? Note = null) : CollectionRow($"h{Title}");
-public sealed record SectionRow(CollectionSection Section) : CollectionRow($"s{Section.Folder}");
-public sealed record HeroRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("r" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)));
-public sealed record CardRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("c" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)));
+public sealed record HeaderRow(string Title, string? Note = null) : CollectionRow($"h{Title}")
+{
+    public override string ToString() => Title;
+}
+public sealed record SectionRow(CollectionSection Section) : CollectionRow($"s{Section.Folder}")
+{
+    public override string ToString() => Section.Folder;
+}
+public sealed record HeroRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("r" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)))
+{
+    public override string ToString() => string.Join(", ", Cards.Select(c => c.Figure.Name));
+}
+public sealed record CardRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("c" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)))
+{
+    public override string ToString() => string.Join(", ", Cards.Select(c => c.Figure.Name));
+}
 public sealed record EntryRow(GcodeEntry Entry) : CollectionRow($"e{Entry.Id}")
 {
     public string Date => Dates.Short(Entry.GeneratedAt);
+    public override string ToString() => $"{Entry.FileName}, {Date}";
 }
 
 public sealed partial class CollectionViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<string> open, Action<long> openOrphan) : ObservableObject
@@ -60,6 +73,10 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
     public string? ModelFolder => settings.ModelFolder;
     public bool HasMarks => MarkedText is not null;
+    /// <summary>The figure open or last open: where the keyboard goes back to.</summary>
+    public string? Selected => selected;
+    /// <summary>A gcode with no figure that is open, so its row gets the keyboard back.</summary>
+    public long? OpenOrphanId { get; private set; }
     public ObservableCollection<CollectionSection> Sections { get; } = [];
     public ObservableCollection<FigureCard> Recent { get; } = [];
     public ObservableCollection<GcodeEntry> WithoutFigure { get; } = [];
@@ -76,6 +93,7 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     [ObservableProperty] private string sendText = "Enviar a Creality Print";
     [ObservableProperty, NotifyPropertyChangedFor(nameof(HasMarks))] private string? markedText;
     [ObservableProperty] private bool showGroupHint;
+    [ObservableProperty] private bool hasRows;
 
     IEnumerable<FigureCard> Cards => Sections.SelectMany(s => s.Cards);
     IEnumerable<FigureCard> Marked => Cards.Where(c => c.IsMarked);
@@ -89,14 +107,14 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         else
         {
             settings = settings with { ModelFolder = null }; // gone, or never chosen
-            ShowEmptyState();
+            RefreshOrphans();
             scan = Task.CompletedTask;
         }
         return start.ModelToOpen;
     }
 
     /// <summary>Until the first scan ends nothing is known to be missing, so everything counts as there.</summary>
-    public bool Has(string relativePath) => !scanned || models.Any(m => m.RelativePath == relativePath);
+    public bool Has(string relativePath) => ModelFolder is not null && (!scanned || models.Any(m => m.RelativePath == relativePath));
 
     public string NameOf(string relativePath) =>
         Cards.FirstOrDefault(c => c.Figure.RelativePath == relativePath)?.Figure.Name // no cards yet while a remembered figure opens
@@ -110,10 +128,13 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     public void RememberModel(string? relativePath)
     {
         selected = relativePath;
+        if (relativePath is not null) OpenOrphanId = null;
         settings = settings with { LastModel = relativePath };
         Persist();
         ShowSelected();
     }
+
+    public void RememberOrphan(long gcodeId) => OpenOrphanId = gcodeId;
 
     void ShowSelected()
     {
@@ -132,10 +153,20 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
 
     public async Task LinkModelsAsync()
     {
-        if (ModelFolder is not { } folder) return;
+        if (ModelFolder is not { } folder)
+        {
+            RefreshOrphans(); // no folder: every gcode is without a figure, and still worth browsing
+            return;
+        }
         var scanned = models;
         await Task.Run(() => Link(folder, scanned));
         await UpdateFiguresAsync();
+    }
+
+    void RefreshOrphans()
+    {
+        ListSync.Apply(WithoutFigure, repository.EntriesWithoutFigure(new HashSet<string>()), (a, b) => a.Id == b.Id);
+        UpdateRows();
     }
 
     void Link(string folder, IReadOnlyList<ModelFile> scanned)
@@ -261,7 +292,6 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
     // ponytail: rebuilt on every keystroke, O(figures); fine for thousands, debounce the query beyond that
     void UpdateRows()
     {
-        if (ModelFolder is null) return;
         var rows = new List<CollectionRow>();
         if (!Searching && Recent.Count > 0)
         {
@@ -289,13 +319,15 @@ public sealed partial class CollectionViewModel(HistoryRepository repository, Ap
         }
 
         ListSync.Apply(Rows, rows, (a, b) => a.Key == b.Key);
+        HasRows = rows.Count > 0;
         ShowEmptyState(found);
     }
 
     void ShowEmptyState(int found = 0)
     {
-        NeedsFolder = ModelFolder is null || models.Count == 0;
+        NeedsFolder = ModelFolder is null || (scanned && models.Count == 0);
         Message = ModelFolder is null ? "Tria una carpeta de models per començar."
+            : !scanned ? null // not known yet: neither «empty» nor «no match» is true
             : models.Count == 0 ? "Aquesta carpeta no té cap model."
             : found == 0 ? "Cap figura coincideix amb la cerca." : null;
     }

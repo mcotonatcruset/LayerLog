@@ -19,6 +19,8 @@ public sealed partial class MainViewModel : ObservableObject
     readonly GcodeImporter importer;
     readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(8) };
     readonly Dictionary<string, string> cards = [];
+    readonly Dictionary<string, string> imports = []; // per card: what the bar says while it imports, and after
+    readonly Dictionary<string, int> running = [];    // per card: imports in flight, since a rescan can start another
     Action? toastAction;
 
     public CollectionViewModel Collection { get; }
@@ -52,9 +54,14 @@ public sealed partial class MainViewModel : ObservableObject
 
     public async void OnCardChanged(string root, string? serial)
     {
-        if (serial is null) cards.Remove(root);
+        if (serial is null)
+        {
+            cards.Remove(root);
+            imports.Remove(root);
+            running.Remove(root);
+        }
         else cards[root] = serial;
-        CardStatus = cards.Count == 0 ? "Cap SD connectada" : string.Join(" · ", cards.Select(c => $"SD {c.Value} · {c.Key.TrimEnd('\\')}"));
+        ShowCardStatus();
         if (serial is not null) await ImportAsync(root, serial);
     }
 
@@ -63,9 +70,34 @@ public sealed partial class MainViewModel : ObservableObject
         if (cards.TryGetValue(root, out var serial)) await ImportAsync(root, serial);
     }
 
+    void ShowCardStatus() =>
+        CardStatus = cards.Count == 0 ? "Cap SD connectada"
+            : string.Join(" · ", cards.Select(c => imports.TryGetValue(c.Key, out var state) ? $"{state} · SD {c.Value}" : $"SD {c.Value} · {c.Key.TrimEnd('\\')}")); // the state first: the bar trims the end
+
     async Task ImportAsync(string root, string serial)
     {
-        var result = await importer.ImportAsync(root, serial, CancellationToken.None);
+        running[root] = running.GetValueOrDefault(root) + 1;
+        imports[root] = "Important…";
+        ShowCardStatus();
+        ImportResult result;
+        var complete = false;
+        try
+        {
+            result = await importer.ImportAsync(root, serial, CancellationToken.None);
+            complete = !result.Interrupted;
+        }
+        finally
+        {
+            if (cards.ContainsKey(root) && running.TryGetValue(root, out var left))
+            {
+                running[root] = --left; // also when the import threw: the count never stays up
+                if (left == 0)
+                {
+                    imports[root] = complete ? "Importada" : "Interrompuda";
+                    ShowCardStatus();
+                }
+            }
+        }
         await Collection.LinkModelsAsync();
         if (result.Added > 0)
         {
@@ -139,6 +171,7 @@ public sealed partial class MainViewModel : ObservableObject
     void OpenOrphan(long gcodeId)
     {
         ShowFigureNow();
+        Collection.RememberOrphan(gcodeId);
         Viewer.OpenOrphan(gcodeId);
     }
 

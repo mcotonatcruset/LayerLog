@@ -1,4 +1,5 @@
 using LayerLog.Core.Data;
+using LayerLog.Core.Gcode;
 using LayerLog.Core.Profiles;
 
 namespace LayerLog.Core.Tests;
@@ -7,6 +8,29 @@ public class AttemptComparisonTests
 {
     static GcodeEntry Entry(params (string Key, string Value)[] config) =>
         new(1, "a.gcode", default, "7.0.1.2", null, null, "", "", config.ToDictionary(c => c.Key, c => c.Value), [], [], "6.3", false, false, null, [], []);
+
+    static GcodeEntry Fixture(string name)
+    {
+        using var stream = File.OpenRead(Path.Combine("Fixtures", name));
+        return Entry(GcodeParser.Parse(stream).Config.Select(p => (p.Key, p.Value)).ToArray());
+    }
+
+    [Fact]
+    public void Identity_and_time_keys_are_not_differences()
+    {
+        var keys = new[] { "printer_settings_id", "inherits_group", "filename_format", "machine_start_gcode", "creality_uuid", "version", "print_time" };
+        var result = AttemptComparison.Between(Entry(keys.Select(k => (k, "a")).ToArray()), Entry(keys.Select(k => (k, "b")).ToArray()));
+        Assert.Equal((0, 0), (result.Differing, result.OneSided));
+        Assert.Empty(result.Known);
+        Assert.Empty(result.Rest);
+    }
+
+    [Fact]
+    public void Real_fixture_differences_are_reported()
+    {
+        var result = AttemptComparison.Between(Fixture("custom-profile.gcode"), Fixture("system-profile.gcode"));
+        Assert.Contains(result.Known, x => x is { Key: "layer_height", A: "0,08 mm", B: "0,16 mm" });
+    }
 
     [Fact]
     public void Known_settings_come_first_and_the_rest_apart()
