@@ -72,21 +72,30 @@ public sealed partial class MainViewModel : ObservableObject
 
     void ShowCardStatus() =>
         CardStatus = cards.Count == 0 ? "Cap SD connectada"
-            : string.Join(" · ", cards.Select(c => $"SD {c.Value} · {imports.GetValueOrDefault(c.Key) ?? c.Key.TrimEnd('\\')}"));
+            : string.Join(" · ", cards.Select(c => imports.TryGetValue(c.Key, out var state) ? $"{state} · SD {c.Value}" : $"SD {c.Value} · {c.Key.TrimEnd('\\')}")); // the state first: the bar trims the end
 
     async Task ImportAsync(string root, string serial)
     {
         running[root] = running.GetValueOrDefault(root) + 1;
         imports[root] = "Important…";
         ShowCardStatus();
-        var result = await importer.ImportAsync(root, serial, CancellationToken.None);
-        if (cards.ContainsKey(root) && running.TryGetValue(root, out var left))
+        ImportResult result;
+        var complete = false;
+        try
         {
-            running[root] = --left;
-            if (left == 0)
+            result = await importer.ImportAsync(root, serial, CancellationToken.None);
+            complete = !result.Interrupted;
+        }
+        finally
+        {
+            if (cards.ContainsKey(root) && running.TryGetValue(root, out var left))
             {
-                imports[root] = result.Interrupted ? "Interrompuda" : "Importada";
-                ShowCardStatus();
+                running[root] = --left; // also when the import threw: the count never stays up
+                if (left == 0)
+                {
+                    imports[root] = complete ? "Importada" : "Interrompuda";
+                    ShowCardStatus();
+                }
             }
         }
         await Collection.LinkModelsAsync();

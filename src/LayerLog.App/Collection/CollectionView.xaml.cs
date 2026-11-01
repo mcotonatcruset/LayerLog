@@ -112,15 +112,16 @@ public partial class CollectionView : UserControl
             for (var next = row + step; next >= 0 && next < rows.Count; next += step)
                 if (IsStop(rows[next]) && FocusStop(next, column)) return; // a row that can't take it hands on to the next
         }
-        else if (col + step >= 0 && col + step < RowCards(rows[row]).Count) _ = Move(row, col + step);
+        else if (col + step >= 0 && col + step < RowCards(rows[row]).Count && Move(row, col + step)) return;
         else
             for (var next = row + step; next >= 0 && next < rows.Count; next += step)
                 if (RowCards(rows[next]).Count > 0 && Move(next, step > 0 ? 0 : RowCards(rows[next]).Count - 1)) return;
 
         bool Move(int toRow, int toCol)
         {
-            column = toCol;
-            return FocusStop(toRow, toCol);
+            if (!FocusStop(toRow, toCol)) return false;
+            column = toCol; // only once it has focus, so it can't drift
+            return true;
         }
     }
 
