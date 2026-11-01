@@ -19,14 +19,14 @@ Un estudi de fotografia. La figura està sobre un fons continu il·luminat, i l'
 | `Faint` | `#98ABAF` | Text de controls desactivats |
 | `Hover` | `#14FFFFFF` | Capa en passar el ratolí |
 | `Change` | `#F2B544` | Valoració i canvis de l'usuari, res més |
-| `Action` | `#EFEBE2` | Fons del botó principal |
+| `Action` | `#EFEBE2` | Fons del botó principal i de les caselles marcades |
 | `ActionText` | `#142731` | Text del botó principal i de les caselles marcades |
 
 Ivori de les figures: 0,9 / 0,87 / 0,8 (`ModelThumbnail.Ivory`). El comparteixen el visor 3D i les miniatures.
 
 ## Regles
 
-- **Regla d'acció:** el color que destaca una acció no s'usa per a res més. Al botó principal, `Action` és un fons ivori amb text fosc.
+- **Regla d'acció:** el color que destaca una acció no s'usa per a res més. `Action` és un fons ivori amb text fosc, al botó principal i a les caselles marcades.
 - **Regla de canvis:** el perfil base és el fons. Només els canvis de l'usuari i la valoració fan servir `Change`.
 - La valoració sempre porta text o estrelles, mai només color.
 - La miniatura verda de Creality només identifica un gcode. Les figures sempre són ivori.
@@ -59,7 +59,8 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - El fons és fix a la pantalla, perquè la càmera orbita: una paret dins l'escena giraria amb ella. Si s'inclina o es desplaça la vista, el fons no es mou.
 - **Ombra de contacte:** un pla amb una textura radial negra sota la figura, de la mida de la seva base. Gira amb la figura.
 - **Enquadrament:** una figura tan alta com ampla ocupa més del 60 % de l'alçada de la vista.
-- El text que flota sobre l'escena porta `SceneShadow`, de manera provisional fins que hi hagi el panell opac.
+- Els missatges del centre de l'escena (càrrega, error, 3MF) van sobre una píndola opaca de `Panel`, que només apareix quan hi ha alguna cosa a dir.
+- L'explorador i l'etiqueta de la figura encara floten sobre l'escena amb `SceneShadow`. És provisional: sobre la part clara del fons aquest text no arriba a AA fins que passi a una superfície opaca.
 
 ## Miniatures
 
@@ -67,6 +68,6 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 
 ## Interacció
 
-- Focus de teclat visible a tots els controls: anell `Ink` de 2 px. Als botons de la finestra l'anell va per dins, perquè toquen la vora.
+- Focus de teclat visible a tots els controls: anell `Ink` de 2 px. Als botons de la finestra l'anell va per dins, perquè toquen la vora. Els camps de text i les files de l'arbre no fan servir l'anell: mostren el focus amb una vora `Ink`.
 - Tots els botons de la finestra tenen nom accessible en català: Minimitzar, Maximitzar o Restaurar, i Tancar.
 - La rotació automàtica no s'activa si Windows demana reduir les animacions.

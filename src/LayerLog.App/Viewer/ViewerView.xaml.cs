@@ -72,8 +72,9 @@ public partial class ViewerView : UserControl
         var old = Mesh.Geometry;
         Mesh.Geometry = null;
         (old as IDisposable)?.Dispose();
-        (ContactShadow.Geometry as IDisposable)?.Dispose();
+        var oldShadow = ContactShadow.Geometry;
         ContactShadow.Geometry = null; // no figure, no shadow
+        (oldShadow as IDisposable)?.Dispose();
         StopTurning();
         if (mesh is null) return;
 

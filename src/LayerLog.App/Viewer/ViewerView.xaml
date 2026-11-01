@@ -100,14 +100,31 @@
       <hx:MeshGeometryModel3D x:Name="Mesh" CullMode="Back"/>
     </hx:Viewport3DX>
 
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="340" IsHitTestVisible="False" Effect="{StaticResource SceneShadow}">
-      <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}" TextAlignment="Center" FontSize="14"
-                 Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}"/>
-      <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisible}}">
-        <TextBlock Text="Carregant el model" Style="{StaticResource MutedText}" TextAlignment="Center"/>
-        <ProgressBar IsIndeterminate="True" Height="3" Width="180" Margin="0,10,0,0" Foreground="{StaticResource Ink}" Background="{StaticResource Line}" BorderThickness="0"/>
+    <!-- Opaque, because the sweep is too light behind Muted text at its centre -->
+    <Border HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="340" Padding="14,10" CornerRadius="8" IsHitTestVisible="False"
+            Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Style.Triggers>
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding Message}" Value="{x:Null}"/>
+                <Condition Binding="{Binding IsLoading}" Value="False"/>
+              </MultiDataTrigger.Conditions>
+              <Setter Property="Visibility" Value="Collapsed"/>
+            </MultiDataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <StackPanel>
+        <TextBlock Text="{Binding Message}" Style="{StaticResource MutedText}" TextAlignment="Center" FontSize="14"
+                   Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}"/>
+        <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisible}}">
+          <TextBlock Text="Carregant el model" Style="{StaticResource MutedText}" TextAlignment="Center"/>
+          <ProgressBar IsIndeterminate="True" Height="3" Width="180" Margin="0,10,0,0" Foreground="{StaticResource Ink}" Background="{StaticResource Line}" BorderThickness="0"/>
+        </StackPanel>
       </StackPanel>
-    </StackPanel>
+    </Border>
 
     <!-- Explorer: text on the scene itself, with no container behind it -->
     <DockPanel HorizontalAlignment="Left" Width="320" Margin="12,60,0,20">
