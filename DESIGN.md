@@ -137,4 +137,4 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 
 - Sense carpeta: el missatge i «Triar una carpeta». Carpeta buida, cap resultat de la cerca, figura sense intents: cadascun amb el seu text.
 - 3MF: a la targeta es queda l'etiqueta del tipus de fitxer; a l'escena, la píndola «La previsualització de 3MF encara no està disponible.»
-- Importació de l'SD: la barra diu «SD ... · important…», després «importada» o «importació interrompuda», fins que es retira la targeta. És `LiveSetting=Polite`, igual que els avisos.
+- Importació de l'SD: la barra diu primer l'estat, «Important… · SD ...», després «Importada» o «Interrompuda», fins que es retira la targeta; l'estat va al davant perquè la barra retalla el final. Amb diverses importacions alhora, només l'última en marca la fi. És `LiveSetting=Polite`, igual que els avisos.

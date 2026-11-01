@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -56,7 +57,7 @@ public partial class MainWindow : Window
         base.OnPreviewKeyDown(e);
         if (Keyboard.Modifiers != ModifierKeys.Control) return;
         if (e.Key == Key.K) FocusSearch();
-        else if (e.Key == Key.Return) SendFromKeyboard();
+        else if (e.Key == Key.Return && Keyboard.FocusedElement is not TextBox) SendFromKeyboard(); // never while typing
         else return;
         e.Handled = true;
     }

@@ -20,6 +20,7 @@ public sealed partial class MainViewModel : ObservableObject
     readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(8) };
     readonly Dictionary<string, string> cards = [];
     readonly Dictionary<string, string> imports = []; // per card: what the bar says while it imports, and after
+    readonly Dictionary<string, int> running = [];    // per card: imports in flight, since a rescan can start another
     Action? toastAction;
 
     public CollectionViewModel Collection { get; }
@@ -57,6 +58,7 @@ public sealed partial class MainViewModel : ObservableObject
         {
             cards.Remove(root);
             imports.Remove(root);
+            running.Remove(root);
         }
         else cards[root] = serial;
         ShowCardStatus();
@@ -74,13 +76,18 @@ public sealed partial class MainViewModel : ObservableObject
 
     async Task ImportAsync(string root, string serial)
     {
-        imports[root] = "important…";
+        running[root] = running.GetValueOrDefault(root) + 1;
+        imports[root] = "Important…";
         ShowCardStatus();
         var result = await importer.ImportAsync(root, serial, CancellationToken.None);
-        if (cards.ContainsKey(root))
+        if (cards.ContainsKey(root) && running.TryGetValue(root, out var left))
         {
-            imports[root] = result.Interrupted ? "importació interrompuda" : "importada";
-            ShowCardStatus();
+            running[root] = --left;
+            if (left == 0)
+            {
+                imports[root] = result.Interrupted ? "Interrompuda" : "Importada";
+                ShowCardStatus();
+            }
         }
         await Collection.LinkModelsAsync();
         if (result.Added > 0)
