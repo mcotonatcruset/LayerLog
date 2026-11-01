@@ -293,7 +293,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, AppSet
         foreach (var e in entries)
         {
             var count = repository.Prints(e.Id).Count;
-            var state = count == 0 ? "No imprès" : count == 1 ? "1 impressió" : $"{count} impressions";
+            var state = AttemptText.State(count);
             Prints.Add(new FigurePrint(e.Id, e.FileName, $"{Dates.Short(e.GeneratedAt)} · {state}", Images.From(e.Thumbnail)));
         }
 

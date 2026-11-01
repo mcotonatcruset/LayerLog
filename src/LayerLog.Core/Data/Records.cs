@@ -30,4 +30,6 @@ public sealed record GcodeEntry(
 
 public sealed record ObjectLink(string Name, string? ModelPath);
 
+public sealed record FigureMeta(string RelativePath, string? Alias, bool IsPart);
+
 public sealed record PrintRecord(long Id, long GcodeId, DateOnly Date, int? Rating, string Note, string? PhotoPath);

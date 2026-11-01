@@ -266,7 +266,7 @@
         </StackPanel>
 
         <StackPanel Margin="0,22,0,0" Visibility="{Binding HasPrints, Converter={StaticResource BoolToVisible}}">
-          <TextBlock Text="Impressions" Style="{StaticResource H2}" Margin="0,0,0,6"/>
+          <TextBlock Text="Intents" Style="{StaticResource H2}" Margin="0,0,0,6"/>
           <ItemsControl ItemsSource="{Binding Prints}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
