@@ -13,9 +13,12 @@ Un estudi de fotografia. La figura està sobre un fons continu il·luminat, i l'
 | `Sweep` | `#233D47` | Fons de la finestra i vores de l'escena |
 | `Panel` | `#142731` | Camps de text i caselles |
 | `Raised` | `#2A4048` | Element seleccionat i botons secundaris |
-| `Line` | `#3A555E` | Vores, barres de desplaçament, estat premut |
+| `Line` | `#3A555E` | Vores, barres de desplaçament, estat premut, pestanya i filtre actius |
 | `Ink` | `#EFEBE2` | Text principal i anell de focus |
 | `Muted` | `#A9BABD` | Text secundari |
+| `Soft` | `#C4D0D1` | Text secundari sobre targetes i a la barra de títol |
+| `Card` | `#2A4752` | Targetes de carpeta |
+| `CardGlow` | `#55808D` a `#2F4F5B` | Targetes de Recents, degradat radial |
 | `Faint` | `#98ABAF` | Text de controls desactivats |
 | `Hover` | `#14FFFFFF` | Capa en passar el ratolí |
 | `Change` | `#F2B544` | Valoració i canvis de l'usuari, res més |
@@ -60,7 +63,17 @@ Els glifs dels botons de la finestra són de Segoe MDL2 Assets, a mida 10.
 - **Ombra de contacte:** un pla amb una textura radial negra sota la figura, de la mida de la seva base. Gira amb la figura.
 - **Enquadrament:** una figura tan alta com ampla ocupa més del 60 % de l'alçada de la vista.
 - Els missatges del centre de l'escena (càrrega, error, 3MF) van sobre una píndola opaca de `Panel`, que només apareix quan hi ha alguna cosa a dir.
-- L'explorador i l'etiqueta de la figura encara floten sobre l'escena amb `SceneShadow`. És provisional: sobre la part clara del fons aquest text no arriba a AA fins que passi a una superfície opaca.
+- L'etiqueta de la figura va sobre una targeta opaca de `Panel`. L'escena no porta cap text directament a sobre, tret de la barra de títol.
+- La barra de títol és transparent sobre l'escena, i per això el text no seleccionat és `Soft`: 5:1 a la zona més clara del fons, i 7,3:1 sobre `Sweep`.
+
+## Col·lecció
+
+- Una llista virtualitzada de files de targetes: cada fila és un `ListBox` d'una sola línia, i les columnes surten de l'amplada, amb un mínim de 240 px per targeta.
+- Targetes de Recents: fons `CardGlow`, imatge de 250 px. Targetes de carpeta: fons `Card`, imatge de 130 px a l'esquerra. Separació de 16 px, radi de 10 px.
+- Les miniatures es descodifiquen a la mida en què es mostren, multiplicada pels DPI i amb un màxim de 320 px.
+- La figura oberta porta una vora `Muted` de 2 px. El focus és l'anell `Ink`, 3 px per fora.
+- Clic o Retorn obren la figura. Espai la selecciona per enviar-la. F2 li canvia el nom. La casella només apareix en passar el ratolí, amb focus o si està marcada.
+- La barra d'enviament és `Panel`, a la part inferior, i només hi és amb alguna figura seleccionada.
 
 ## Miniatures
 

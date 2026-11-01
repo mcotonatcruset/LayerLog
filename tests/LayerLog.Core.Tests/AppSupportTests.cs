@@ -45,14 +45,13 @@ public sealed class AppSupportTests : IDisposable
     }
 
     [Fact]
-    public void Links_and_counts_reflect_the_models()
+    public void Links_reflect_the_models()
     {
         var repo = new HistoryRepository(Path.Combine(dir, "t.db"));
         var a = repo.Add("a", "a.gcode", HistoryRepositoryTests.Info("m.stl"), HistoryRepositoryTests.Comparison);
         var b = repo.Add("b", "b.gcode", HistoryRepositoryTests.Info("m.stl"), HistoryRepositoryTests.Comparison);
         repo.LinkObject(a, "m.stl", "x\\m.stl", null);
         repo.LinkObject(b, "m.stl", "x\\m.stl", null);
-        Assert.Equal(2, repo.ModelGcodeCounts()["x\\m.stl"]);
         Assert.Equal([new ObjectLink("m.stl", "x\\m.stl")], repo.ObjectLinks(a));
     }
 }

@@ -21,13 +21,14 @@ public static class AppPaths
 
 public static class Images
 {
-    public static BitmapImage? From(byte[]? bytes)
+    /// <param name="decodeWidth">Pixels to decode to, so a small picture doesn't hold a large bitmap; 0 keeps the full size.</param>
+    public static BitmapImage? From(byte[]? bytes, int decodeWidth = 0)
     {
         if (bytes is null) return null;
         try
         {
             using var stream = new MemoryStream(bytes);
-            return Load(i => i.StreamSource = stream);
+            return Load(i => { i.StreamSource = stream; i.DecodePixelWidth = decodeWidth; });
         }
         catch (Exception e) when (e is NotSupportedException or FileFormatException)
         {

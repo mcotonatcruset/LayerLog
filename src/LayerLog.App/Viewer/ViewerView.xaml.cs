@@ -60,12 +60,6 @@ public partial class ViewerView : UserControl
         Unloaded += (_, _) => CompositionTarget.Rendering -= Turn;
     }
 
-    void OnTreeSelection(object sender, RoutedPropertyChangedEventArgs<object> e)
-    {
-        // Only a figure changes what's open: the tree also moves its selection to folders and to nothing as rows collapse or results open.
-        if (model is not null && e.NewValue is ExplorerNode { IsFile: true } node) model.SelectedNode = node;
-    }
-
     async void ShowMesh(StlMesh? mesh)
     {
         var request = ++meshRequest;

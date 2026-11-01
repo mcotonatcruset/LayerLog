@@ -13,8 +13,11 @@ public class ModelBrowsingTests
     [InlineData("a.stl", 0, "", FigureFilter.Printed, false)]
     [InlineData("a.stl", 2, "", FigureFilter.Unprinted, false)]
     [InlineData("a.stl", 0, "", FigureFilter.Unprinted, true)]
-    public void Search_combines_words_and_filter(string path, int gcodes, string query, FigureFilter filter, bool expected) =>
-        Assert.Equal(expected, ModelSearch.Matches(path, gcodes, query, filter));
+    public void Search_combines_words_and_filter(string path, int gcodes, string query, FigureFilter filter, bool expected)
+    {
+        var figure = new Figure(path, Path.GetFileNameWithoutExtension(path), Path.GetDirectoryName(path) ?? "", false, new FigureStats(gcodes, null, null, null));
+        Assert.Equal(expected, ModelSearch.Matches(figure, query, filter));
+    }
 
     [Fact]
     public void Thumbnail_of_nothing_is_transparent()

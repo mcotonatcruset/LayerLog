@@ -87,15 +87,6 @@ public sealed class HistoryRepository
     public IReadOnlyList<GcodeEntry> ListForModel(string relativePath) =>
         Entries("WHERE EXISTS (SELECT 1 FROM gcode_object o WHERE o.gcode_id = g.id AND o.model_path = $0)", [relativePath]);
 
-    public IReadOnlyDictionary<string, int> ModelGcodeCounts()
-    {
-        using var c = Database.Open(path);
-        var counts = new Dictionary<string, int>();
-        using var r = Command(c, "SELECT model_path, COUNT(DISTINCT gcode_id) FROM gcode_object WHERE model_path IS NOT NULL GROUP BY model_path").ExecuteReader();
-        while (r.Read()) counts[r.GetString(0)] = r.GetInt32(1);
-        return counts;
-    }
-
     /// <summary>One query for every figure: a gcode counts once per figure however many of its objects link to it.</summary>
     public IReadOnlyDictionary<string, FigureStats> FigureStats()
     {
