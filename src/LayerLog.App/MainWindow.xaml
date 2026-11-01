@@ -1,37 +1,108 @@
 <Window x:Class="LayerLog.App.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:collection="clr-namespace:LayerLog.App.Collection"
         xmlns:viewer="clr-namespace:LayerLog.App.Viewer"
         xmlns:history="clr-namespace:LayerLog.App.History"
+        xmlns:models="clr-namespace:LayerLog.Core.Models;assembly=LayerLog.Core"
         Title="LayerLog" Width="1500" Height="900" MinWidth="1100" MinHeight="700"
         Background="{StaticResource Sweep}" Foreground="{StaticResource Ink}"
         FontFamily="{StaticResource UiFont}" FontSize="14" Typography.NumeralAlignment="Tabular" TextOptions.TextFormattingMode="Ideal">
   <WindowChrome.WindowChrome>
     <WindowChrome CaptionHeight="52" ResizeBorderThickness="6" GlassFrameThickness="0,0,0,1" CornerRadius="0" UseAeroCaptionButtons="False"/>
   </WindowChrome.WindowChrome>
+  <Window.InputBindings>
+    <KeyBinding Key="Escape" Command="{Binding EscapeCommand}"/>
+  </Window.InputBindings>
   <Grid x:Name="Root">
+    <!-- The figure's 3D view stays alive behind the other screens: Visibility, never recreated -->
     <viewer:ViewerView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding Viewer}"
-                       Visibility="{Binding DataContext.ShowViewer, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
+                       Visibility="{Binding DataContext.ShowFigure, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
+    <collection:CollectionView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding Collection}" Margin="0,52,0,0"
+                               Visibility="{Binding DataContext.ShowCollection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
     <history:HistoryView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding History}" Margin="0,52,0,0"
-                         Visibility="{Binding DataContext.ShowViewer, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NotBoolToVisible}}"/>
+                         Visibility="{Binding DataContext.ShowHistory, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
 
-    <!-- Last child so it draws on top; TabIndex (on Local groups, else ignored) makes Tab reach the tabs first -->
-    <DockPanel KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="0" VerticalAlignment="Top" Height="52" Margin="20,0,0,0" LastChildFill="False" Effect="{StaticResource SceneShadow}">
-      <TextBlock Text="LayerLog" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0"/>
-      <RadioButton Style="{StaticResource TabButton}" Content="Visor" IsChecked="{Binding ShowViewer}" GroupName="Tabs" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True"/>
-      <RadioButton Style="{StaticResource TabButton}" Content="Historial" GroupName="Tabs" VerticalAlignment="Center" Margin="4,0,0,0"
-                   IsChecked="{Binding ShowHistory}" WindowChrome.IsHitTestVisibleInChrome="True"/>
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+    <!-- Last child so it draws on top; TabIndex (on Local groups, else ignored) makes Tab reach the bar first -->
+    <Grid KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="0" VerticalAlignment="Top" Height="52" Margin="20,0,0,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition/>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock Text="LayerLog" FontWeight="Bold" FontSize="15" VerticalAlignment="Center" Margin="0,0,24,0"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
+        <RadioButton Style="{StaticResource TabButton}" Content="Col·lecció" GroupName="Tabs" IsChecked="{Binding ShowCollection, Mode=OneWay}" Command="{Binding BackCommand}"/>
+        <RadioButton Style="{StaticResource TabButton}" Content="Historial" GroupName="Tabs" Margin="4,0,0,0" IsChecked="{Binding ShowHistory, Mode=OneWay}" Command="{Binding ShowHistoryNowCommand}"/>
+        <RadioButton Style="{StaticResource TabButton}" GroupName="Tabs" Margin="4,0,0,0" MaxWidth="300" IsChecked="{Binding ShowFigure, Mode=OneWay}" Command="{Binding ShowFigureNowCommand}"
+                     AutomationProperties.Name="{Binding Viewer.FigureName}" ToolTip="{Binding Viewer.FigureName}"
+                     Visibility="{Binding Viewer.FigureName, Converter={StaticResource NullToCollapsed}}">
+          <TextBlock Text="{Binding Viewer.FigureName}" TextTrimming="CharacterEllipsis"/>
+        </RadioButton>
+      </StackPanel>
+
+      <Grid Grid.Column="2" DataContext="{Binding Collection}" Margin="24,0,16,0"
+            Visibility="{Binding DataContext.ShowCollection, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="1000*" MaxWidth="460"/>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True">
+          <TextBox x:Name="Search" Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Cercar figures" Padding="12,8" BorderThickness="0">
+            <TextBox.InputBindings>
+              <KeyBinding Key="Escape" Command="{Binding ClearQueryCommand}"/>
+            </TextBox.InputBindings>
+          </TextBox>
+          <TextBlock Text="Cerca figures, fitxers o carpetes" Foreground="{StaticResource Muted}" Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+            <TextBlock.Style>
+              <Style TargetType="TextBlock">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding Text, ElementName=Search}" Value="">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </TextBlock.Style>
+          </TextBlock>
+        </Grid>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0" WindowChrome.IsHitTestVisibleInChrome="True">
+          <RadioButton Style="{StaticResource TabButton}" GroupName="Filter" Content="Totes" IsChecked="True" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static models:FigureFilter.All}"/>
+          <RadioButton Style="{StaticResource TabButton}" GroupName="Filter" Content="Impreses" Margin="4,0,0,0" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static models:FigureFilter.Printed}"/>
+          <RadioButton Style="{StaticResource TabButton}" GroupName="Filter" Content="Sense imprimir" Margin="4,0,0,0" Command="{Binding SetFilterCommand}" CommandParameter="{x:Static models:FigureFilter.Unprinted}"/>
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Grid.Column="3" Text="{Binding CardStatus}" ToolTip="{Binding CardStatus}" Foreground="{StaticResource Soft}" FontSize="13" MaxWidth="240" TextTrimming="CharacterEllipsis"
+                 VerticalAlignment="Center" Margin="0,0,16,0"/>
+      <StackPanel Grid.Column="4" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
         <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="OnMinimize" ToolTip="Minimitzar" AutomationProperties.Name="Minimitzar"/>
         <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="OnMaximize" ToolTip="Maximitzar" AutomationProperties.Name="Maximitzar"/>
         <Button Style="{StaticResource CaptionButton}" Content="&#xE8BB;" Click="OnClose" ToolTip="Tancar" AutomationProperties.Name="Tancar"/>
       </StackPanel>
-      <TextBlock DockPanel.Dock="Right" Text="{Binding CardStatus}" Style="{StaticResource MutedText}" VerticalAlignment="Center" Margin="0,0,16,0"/>
-    </DockPanel>
+    </Grid>
 
-    <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,24" Padding="14,10" CornerRadius="8"
+    <Border VerticalAlignment="Bottom" HorizontalAlignment="Center" Padding="14,10" CornerRadius="8"
             Background="{StaticResource Raised}" BorderBrush="{StaticResource Line}" BorderThickness="1"
             Visibility="{Binding Toast, Converter={StaticResource NullToCollapsed}}">
+      <Border.Style>
+        <Style TargetType="Border">
+          <Setter Property="Margin" Value="0,0,0,24"/>
+          <Style.Triggers>
+            <!-- Clears the collection's send bar -->
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding ShowCollection}" Value="True"/>
+                <Condition Binding="{Binding Collection.HasMarks}" Value="True"/>
+              </MultiDataTrigger.Conditions>
+              <Setter Property="Margin" Value="0,0,0,76"/>
+            </MultiDataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
       <StackPanel Orientation="Horizontal">
         <TextBlock Text="{Binding Toast}" AutomationProperties.LiveSetting="Polite"/>
         <Button Style="{StaticResource LinkButton}" Content="Veure a l'historial" Margin="16,0,0,0" Command="{Binding ShowHistoryNowCommand}"

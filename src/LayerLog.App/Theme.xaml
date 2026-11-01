@@ -13,10 +13,14 @@
   <SolidColorBrush x:Key="Action" Color="#EFEBE2"/>
   <SolidColorBrush x:Key="ActionText" Color="#142731"/>
   <SolidColorBrush x:Key="Hover" Color="#14FFFFFF"/>
+  <SolidColorBrush x:Key="Soft" Color="#C4D0D1"/>
+  <SolidColorBrush x:Key="Card" Color="#2A4752"/>
+  <RadialGradientBrush x:Key="CardGlow" Center="0.5,0.4" GradientOrigin="0.5,0.4" RadiusX="0.72" RadiusY="0.62">
+    <GradientStop Color="#55808D" Offset="0"/>
+    <GradientStop Color="#2F4F5B" Offset="1"/>
+  </RadialGradientBrush>
 
   <FontFamily x:Key="UiFont">pack://application:,,,/Fonts/#Hanken Grotesk, Segoe UI</FontFamily>
-  <!-- Kept until the floating explorer goes away -->
-  <DropShadowEffect x:Key="SceneShadow" BlurRadius="14" ShadowDepth="0" Opacity="1" Color="Black" RenderingBias="Performance"/>
 
   <!-- Keyboard focus: 2 px ink outline -->
   <Style x:Key="FocusRing">
@@ -175,9 +179,10 @@
     </Setter>
   </Style>
 
+  <!-- Soft, not Muted: these sit in the title bar, over the light top of the scene -->
   <Style x:Key="TabButton" TargetType="RadioButton" BasedOn="{StaticResource FlatButton}">
     <Setter Property="Background" Value="Transparent"/>
-    <Setter Property="Foreground" Value="{StaticResource Muted}"/>
+    <Setter Property="Foreground" Value="{StaticResource Soft}"/>
     <Setter Property="Padding" Value="12,5"/>
     <Setter Property="Template">
       <Setter.Value>
@@ -191,8 +196,48 @@
               <Setter Property="Foreground" Value="{StaticResource Ink}"/>
             </Trigger>
             <Trigger Property="IsChecked" Value="True">
-              <Setter TargetName="B" Property="Background" Value="{StaticResource Raised}"/>
+              <Setter TargetName="B" Property="Background" Value="{StaticResource Line}"/>
               <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="ContextMenu">
+    <Setter Property="FontFamily" Value="{StaticResource UiFont}"/>
+    <Setter Property="FontSize" Value="14"/>
+    <Setter Property="HasDropShadow" Value="False"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ContextMenu">
+          <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="4">
+            <StackPanel IsItemsHost="True"/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style TargetType="MenuItem">
+    <Setter Property="Foreground" Value="{StaticResource Ink}"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="MenuItem">
+          <Border x:Name="B" CornerRadius="4" Padding="10,6" Background="Transparent">
+            <DockPanel>
+              <TextBlock x:Name="Tick" Text="✓" Width="18" Visibility="Hidden"/>
+              <TextBlock DockPanel.Dock="Right" Text="{TemplateBinding InputGestureText}" Foreground="{StaticResource Muted}" FontSize="13" Margin="24,0,0,0" VerticalAlignment="Center"/>
+              <ContentPresenter ContentSource="Header" RecognizesAccessKey="True"/>
+            </DockPanel>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsHighlighted" Value="True">
+              <Setter TargetName="B" Property="Background" Value="{StaticResource Raised}"/>
+            </Trigger>
+            <Trigger Property="IsChecked" Value="True">
+              <Setter TargetName="Tick" Property="Visibility" Value="Visible"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

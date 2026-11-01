@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using LayerLog.App.Collection;
 using LayerLog.App.History;
 using LayerLog.App.Viewer;
 using LayerLog.Core.Data;
@@ -11,6 +12,8 @@ using LayerLog.Core.Settings;
 
 namespace LayerLog.App;
 
+public enum Screen { Collection, Figure }
+
 public sealed partial class MainViewModel : ObservableObject
 {
     readonly HistoryRepository repository;
@@ -18,39 +21,43 @@ public sealed partial class MainViewModel : ObservableObject
     readonly DispatcherTimer toastTimer = new() { Interval = TimeSpan.FromSeconds(8) };
     readonly Dictionary<string, string> cards = [];
 
+    public CollectionViewModel Collection { get; }
     public ViewerViewModel Viewer { get; }
     public HistoryViewModel History { get; }
 
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowHistory))] private bool showViewer = true;
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCollection), nameof(ShowFigure))] private Screen screen;
+    // ponytail: the history still sits on top of the two screens; it goes in Task 8
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowCollection), nameof(ShowFigure))] private bool showHistory;
     [ObservableProperty] private string cardStatus = "Cap SD connectada";
     [ObservableProperty] private string? toast;
     [ObservableProperty] private bool toastHasAction;
 
-    public bool ShowHistory
-    {
-        get => !ShowViewer;
-        set => ShowViewer = !value;
-    }
+    public bool ShowCollection => !ShowHistory && Screen == Screen.Collection;
+    public bool ShowFigure => !ShowHistory && Screen == Screen.Figure;
 
     public MainViewModel()
     {
         Directory.CreateDirectory(AppPaths.DataFolder);
         repository = new HistoryRepository(AppPaths.Database);
         importer = new GcodeImporter(repository, new ProfileLibrary(AppPaths.CrealityProfiles));
-        History = new HistoryViewModel(repository, new PhotoStore(AppPaths.Photos), OpenModel, () => Viewer!.ModelFolder);
-        Viewer = new ViewerViewModel(repository, AppSettings.Load(AppPaths.Settings), ShowToast, OpenEntry);
+        Collection = new CollectionViewModel(repository, AppSettings.Load(AppPaths.Settings), ShowToast, OpenFigure);
+        Viewer = new ViewerViewModel(repository, Collection, OpenEntry);
+        Collection.Refreshed += Viewer.OnCollectionRefreshed;
+        History = new HistoryViewModel(repository, new PhotoStore(AppPaths.Photos), OpenFigure, () => Collection.ModelFolder);
         toastTimer.Tick += (_, _) => HideToast();
     }
 
-    // Prints are edited in the history, so the figure panel may be stale on the way back.
-    partial void OnShowViewerChanged(bool value)
+    // Prints and links are edited in the history, so the figures may be stale on the way back.
+    async partial void OnShowHistoryChanged(bool value)
     {
-        if (value) Viewer.RefreshFigure();
+        if (!value) await Collection.UpdateFiguresAsync();
     }
 
     public async Task StartAsync()
     {
-        await Viewer.StartAsync();
+        // Picks the screen before the scan, so a remembered figure never flashes the collection.
+        if (Collection.Start(out var scan) is { } remembered) ShowModel(remembered);
+        await scan;
         History.Refresh();
     }
 
@@ -70,7 +77,7 @@ public sealed partial class MainViewModel : ObservableObject
     async Task ImportAsync(string root, string serial)
     {
         var result = await importer.ImportAsync(root, serial, CancellationToken.None);
-        await Viewer.LinkModelsAsync();
+        await Collection.LinkModelsAsync();
         History.Refresh();
         if (result.Added > 0)
         {
@@ -100,18 +107,46 @@ public sealed partial class MainViewModel : ObservableObject
     void ShowHistoryNow()
     {
         HideToast();
-        ShowViewer = false;
+        ShowHistory = true;
+    }
+
+    [RelayCommand]
+    void Back()
+    {
+        ShowHistory = false;
+        Screen = Screen.Collection;
+    }
+
+    [RelayCommand]
+    void ShowFigureNow()
+    {
+        ShowHistory = false;
+        Screen = Screen.Figure;
+    }
+
+    // ponytail: Esc does nothing in the history, whose note boxes use it; that view goes in Task 8
+    [RelayCommand]
+    void Escape()
+    {
+        if (ShowFigure) Back();
+        else if (ShowCollection) Collection.Query = "";
     }
 
     void OpenEntry(long gcodeId)
     {
         History.Select(gcodeId);
-        ShowViewer = false;
+        ShowHistory = true;
     }
 
-    void OpenModel(string relativePath)
+    public void OpenFigure(string relativePath)
     {
-        ShowViewer = true;
-        Viewer.ShowModel(relativePath);
+        if (Collection.Has(relativePath)) ShowModel(relativePath);
+        else ShowToast("Aquest model ja no és a la carpeta.");
+    }
+
+    void ShowModel(string relativePath)
+    {
+        ShowFigureNow();
+        Viewer.Open(relativePath);
     }
 }
