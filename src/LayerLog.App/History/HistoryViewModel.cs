@@ -76,7 +76,7 @@ public sealed partial class HistoryViewModel(HistoryRepository repository, Photo
         foreach (var entry in repository.List(Search))
         {
             var count = repository.Prints(entry.Id).Count;
-            var state = count == 0 ? "No imprès" : count == 1 ? "1 impressió" : $"{count} impressions";
+            var state = AttemptText.State(count);
             Entries.Add(new EntryRow(entry, state, UpdateMarks) { IsMarked = marked.Contains(entry.Id) });
         }
         IsEmpty = Entries.Count == 0 && string.IsNullOrEmpty(Search);
