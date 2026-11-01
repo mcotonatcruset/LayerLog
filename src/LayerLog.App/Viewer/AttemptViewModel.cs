@@ -67,7 +67,8 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     [ObservableProperty] private string? nameB;
     [ObservableProperty] private BitmapImage? thumbA;
     [ObservableProperty] private BitmapImage? thumbB;
-    [ObservableProperty] private bool hasCompareRows;
+    [ObservableProperty] private string? compareNote;
+    long comparedId;
 
     public ObservableCollection<CompareRow> CompareRows { get; } = [];
     public ObservableCollection<CompareRow> CompareRest { get; } = [];
@@ -151,7 +152,11 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
 
     PrintRow Row(PrintRecord p) => new(p, repository, photos, PrintsChanged, PrintDeleted);
 
-    async void PrintsChanged() => await collection.UpdateFiguresAsync();
+    async void PrintsChanged()
+    {
+        if (IsComparing) BuildComparison(); // the best rating may have changed
+        await collection.UpdateFiguresAsync();
+    }
 
     void PrintDeleted(PrintRow row)
     {
@@ -189,21 +194,29 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     void CompareWith(CompareChoice choice)
     {
         IsChoosing = false;
-        var (a, b) = (repository.Get(gcodeId), repository.Get(choice.GcodeId));
-        var (known, rest) = AttemptComparison.Between(a, b);
-        var count = known.Count + rest.Count;
+        comparedId = choice.GcodeId;
+        ShowRest = false;
+        BuildComparison();
+        IsComparing = true;
+    }
+
+    void BuildComparison()
+    {
+        var (a, b) = (repository.Get(gcodeId), repository.Get(comparedId));
+        var result = AttemptComparison.Between(a, b);
+        var (known, rest) = (result.Known, result.Rest);
 
         (ThumbA, ThumbB, NameA, NameB) = (Images.From(a.Thumbnail), Images.From(b.Thumbnail), a.FileName, b.FileName);
-        CompareTitle = count switch { 0 => "Cap diferència entre aquests dos gcode", 1 => "1 diferència", _ => $"{count} diferències" };
+        CompareNote = result.NoConfig ? "Aquest gcode no té configuració" : null;
+        CompareTitle = result.NoConfig ? "No es poden comparar" : result.Differing + result.OneSided == 0 ? "Cap diferència entre aquests dos gcode"
+            : (result.Differing == 1 ? "1 diferència" : $"{result.Differing} diferències")
+              + (result.OneSided > 0 ? $" i {result.OneSided} {(result.OneSided == 1 ? "paràmetre" : "paràmetres")} només en un gcode" : "");
         CompareRows.Clear();
         foreach (var s in known) CompareRows.Add(new CompareRow(s.Label, s.A, s.B));
         CompareRows.Add(new CompareRow("Millor valoració", Best(a.Id), Best(b.Id)));
         CompareRest.Clear();
         foreach (var s in rest) CompareRest.Add(new CompareRow(s.Label, s.A, s.B));
-        CompareRestTitle = rest.Count == 0 ? null : known.Count == 0 ? $"Mostrar {rest.Count} diferències" : $"{rest.Count} diferències més";
-        ShowRest = false;
-        HasCompareRows = count > 0;
-        IsComparing = true;
+        CompareRestTitle = rest.Count == 0 ? null : known.Count == 0 ? $"Mostrar {rest.Count} paràmetres" : $"{rest.Count} paràmetres més";
     }
 
     string Best(long id) => repository.BestPrint([id])?.Rating is { } r ? $"{Stars.Text(r)}  {Stars.Spoken(r)}" : Stars.Text(null);

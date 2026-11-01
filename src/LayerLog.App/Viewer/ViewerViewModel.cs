@@ -45,6 +45,12 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     [ObservableProperty] private string? bestCaution;
     [ObservableProperty] private string? allChangesText;
 
+    // Whatever clears the attempt (back, refresh, figure gone) takes its comparison with it.
+    partial void OnSelectedAttemptChanged(AttemptRow? value)
+    {
+        if (value is null) attempt.CloseComparison();
+    }
+
     public bool ShowSummary => FigureName is not null && SelectedAttempt is null;
     /// <summary>A gcode opened on its own. Any figure stays loaded and remembered behind it, out of the scene.</summary>
     public bool ShowOrphan => OrphanText is not null;
@@ -82,7 +88,6 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     public async void Open(string relativePath)
     {
         OrphanText = null;
-        attempt.CloseComparison();
         SelectedAttempt = null;
         if (relativePath == shown)
         {
@@ -194,7 +199,6 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     public async void CloseAttempt()
     {
         if (SelectedAttempt is null) return;
-        attempt.CloseComparison();
         OrphanText = null;
         SelectedAttempt = null;
         await collection.UpdateFiguresAsync();

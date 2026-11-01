@@ -33,11 +33,29 @@ public class AttemptComparisonTests
     [Fact]
     public void Setting_missing_on_one_side_is_shown_as_missing()
     {
-        var (_, rest) = AttemptComparison.Between(Entry(("zzz_unknown_setting", "1")), Entry());
+        var (_, rest) = AttemptComparison.Between(Entry(("zzz_unknown_setting", "1"), ("layer_height", "0.1")), Entry(("layer_height", "0.1")));
         var only = Assert.Single(rest);
         Assert.Equal(("1", "—"), (only.A, only.B));
 
-        var (_, back) = AttemptComparison.Between(Entry(), Entry(("zzz_unknown_setting", "1")));
+        var (_, back) = AttemptComparison.Between(Entry(("layer_height", "0.1")), Entry(("zzz_unknown_setting", "1"), ("layer_height", "0.1")));
         Assert.Equal(("—", "1"), (back.Single().A, back.Single().B));
+    }
+
+    [Fact]
+    public void Counts_separate_changed_values_from_settings_on_one_side()
+    {
+        var a = Entry(("layer_height", "0.08"), ("zzz_a", "1"), ("zzz_same", "x"));
+        var b = Entry(("layer_height", "0.16"), ("zzz_b", "1"), ("zzz_same", "x"));
+        var result = AttemptComparison.Between(a, b);
+        Assert.Equal((1, 2), (result.Differing, result.OneSided));
+    }
+
+    [Fact]
+    public void Gcode_without_config_is_flagged_not_listed()
+    {
+        var result = AttemptComparison.Between(Entry(), Entry(("layer_height", "0.16")));
+        Assert.True(result.NoConfig);
+        Assert.Empty(result.Known);
+        Assert.Empty(result.Rest);
     }
 }

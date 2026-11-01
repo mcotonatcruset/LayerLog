@@ -25,7 +25,8 @@
           <TextBlock Text="L'altre" Style="{StaticResource MutedText}" TextAlignment="Right"/>
         </StackPanel>
       </Grid>
-      <TextBlock Text="{Binding CompareTitle}" Style="{StaticResource H2}" Margin="0,24,0,6" AutomationProperties.LiveSetting="Polite"/>
+      <TextBlock Text="{Binding CompareTitle}" Style="{StaticResource H2}" Margin="0,24,0,6" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+      <TextBlock Text="{Binding CompareNote}" Style="{StaticResource MutedText}" Margin="0,0,0,10" Visibility="{Binding CompareNote, Converter={StaticResource NullToCollapsed}}"/>
 
       <ItemsControl ItemsSource="{Binding CompareRows}" Focusable="False" ItemTemplate="{StaticResource CompareItem}"/>
 
