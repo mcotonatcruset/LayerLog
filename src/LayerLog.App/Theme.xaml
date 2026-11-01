@@ -210,6 +210,22 @@
     </Grid>
   </DataTemplate>
 
+  <!-- A comparison row: both values plain, no colour. «Change» belongs to what the user changed from a base -->
+  <DataTemplate x:Key="CompareItem">
+    <Border BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="0,9">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition/>
+          <ColumnDefinition Width="170"/>
+          <ColumnDefinition Width="170"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="{Binding Label}" Foreground="{StaticResource Soft}" TextWrapping="Wrap"/>
+        <TextBlock Grid.Column="1" Text="{Binding A}" FontWeight="SemiBold" TextAlignment="Right" TextWrapping="Wrap" Margin="12,0,0,0"/>
+        <TextBlock Grid.Column="2" Text="{Binding B}" FontWeight="SemiBold" TextAlignment="Right" TextWrapping="Wrap" Margin="12,0,0,0"/>
+      </Grid>
+    </Border>
+  </DataTemplate>
+
   <!-- Soft, not Muted: these sit in the title bar, over the light top of the scene -->
   <Style x:Key="TabButton" TargetType="RadioButton" BasedOn="{StaticResource FlatButton}">
     <Setter Property="Background" Value="Transparent"/>

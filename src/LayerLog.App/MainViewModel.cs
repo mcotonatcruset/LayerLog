@@ -118,6 +118,7 @@ public sealed partial class MainViewModel : ObservableObject
     void Escape()
     {
         if (ShowCollection) Collection.Query = "";
+        else if (Viewer.Attempt.IsComparing) Viewer.Attempt.CloseComparisonCommand.Execute(null);
         else if (Viewer.SelectedAttempt is not null) CloseAttempt();
         else Back();
     }

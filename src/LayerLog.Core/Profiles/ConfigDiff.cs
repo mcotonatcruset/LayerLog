@@ -16,13 +16,15 @@ public static partial class ConfigDiff
     public static IReadOnlyList<ConfigChange> Between(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b) =>
         Changes(a, b, IgnoredBetween());
 
+    public static bool IsIgnoredBetween(string key) => IgnoredBetween().IsMatch(key);
+
     static List<ConfigChange> Changes(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b, Regex skip) =>
         a.Where(p => !skip.IsMatch(p.Key) && b.ContainsKey(p.Key) && First(p.Value) != First(b[p.Key]))
          .Select(p => new ConfigChange(p.Key, First(p.Value), First(b[p.Key])))
          .ToList();
 
     // Multi-extruder settings repeat their value: "200,200".
-    static string First(string value) => value.Split(',')[0].Trim().Trim('"');
+    public static string First(string value) => value.Split(',')[0].Trim().Trim('"');
 
     [GeneratedRegex(@"^(inherits|name$|from$|type$|version$|setting_id$|instantiation$|compatible_|print_settings_id$|filament_settings_id$|default_filament_colour$)|gcode")]
     private static partial Regex IdentityKey();

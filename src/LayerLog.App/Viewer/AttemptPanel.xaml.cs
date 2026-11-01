@@ -30,6 +30,38 @@ public partial class AttemptPanel : UserControl
         });
     }
 
+    public void FocusCompare() => CompareButton.Focus();
+
+    // Arrows move the highlight, Return or a click picks, Esc closes the list and nothing else.
+    void OnChoicesOpened(object sender, EventArgs e) => Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+    {
+        if (Choices.Items.Count == 0) return;
+        Choices.SelectedIndex = 0;
+        (Choices.ItemContainerGenerator.ContainerFromIndex(0) as ListBoxItem)?.Focus();
+    });
+
+    void OnChoicesKey(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape)
+        {
+            ((AttemptViewModel)DataContext).IsChoosing = false;
+            CompareButton.Focus();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Return && Choices.SelectedItem is CompareChoice choice)
+        {
+            Pick(choice);
+            e.Handled = true;
+        }
+    }
+
+    void OnChoiceClicked(object sender, MouseButtonEventArgs e)
+    {
+        if (((ListBoxItem)sender).DataContext is CompareChoice choice) Pick(choice);
+    }
+
+    void Pick(CompareChoice choice) => ((AttemptViewModel)DataContext).CompareWithCommand.Execute(choice);
+
     void OnDeleted(object sender, RoutedEventArgs e) =>
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () => AddPrintButton.Focus());
 }

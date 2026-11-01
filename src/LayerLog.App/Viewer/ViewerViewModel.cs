@@ -82,6 +82,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     public async void Open(string relativePath)
     {
         OrphanText = null;
+        attempt.CloseComparison();
         SelectedAttempt = null;
         if (relativePath == shown)
         {
@@ -193,6 +194,7 @@ public sealed partial class ViewerViewModel(HistoryRepository repository, Collec
     public async void CloseAttempt()
     {
         if (SelectedAttempt is null) return;
+        attempt.CloseComparison();
         OrphanText = null;
         SelectedAttempt = null;
         await collection.UpdateFiguresAsync();

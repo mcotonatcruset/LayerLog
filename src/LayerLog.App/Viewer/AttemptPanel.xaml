@@ -20,6 +20,56 @@
         </DockPanel>
         <TextBlock Text="{Binding NoteMeta}" Style="{StaticResource MutedText}" Margin="0,10,0,0"/>
 
+        <Grid Margin="0,14,0,0" HorizontalAlignment="Left">
+          <ToggleButton x:Name="CompareButton" Style="{StaticResource FlatButton}" Content="Comparar amb…" Padding="12,5" IsChecked="{Binding IsChoosing}"
+                        AutomationProperties.Name="Comparar amb un altre gcode" ToolTip="Comparar amb un altre gcode"/>
+          <Popup IsOpen="{Binding IsChoosing}" PlacementTarget="{Binding ElementName=CompareButton}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True" Focusable="False"
+                 Opened="OnChoicesOpened">
+            <Border Background="{StaticResource Panel}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Margin="0,4,8,8" Width="340">
+              <ListBox x:Name="Choices" ItemsSource="{Binding CompareChoices}" MaxHeight="360" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Ink}" Padding="4"
+                       AutomationProperties.Name="Gcode per comparar" PreviewKeyDown="OnChoicesKey">
+                <ListBox.GroupStyle>
+                  <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
+                      <DataTemplate>
+                        <TextBlock Text="{Binding Name}" Style="{StaticResource MutedText}" Margin="8,10,8,4"/>
+                      </DataTemplate>
+                    </GroupStyle.HeaderTemplate>
+                  </GroupStyle>
+                </ListBox.GroupStyle>
+                <ListBox.ItemContainerStyle>
+                  <Style TargetType="ListBoxItem">
+                    <Setter Property="AutomationProperties.Name" Value="{Binding Name}"/>
+                    <Setter Property="FocusVisualStyle" Value="{StaticResource FocusRing}"/>
+                    <EventSetter Event="PreviewMouseLeftButtonUp" Handler="OnChoiceClicked"/>
+                    <Setter Property="Template">
+                      <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                          <Border x:Name="Row" Background="Transparent" CornerRadius="4" Padding="8,6">
+                            <ContentPresenter/>
+                          </Border>
+                          <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{StaticResource Hover}"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="{StaticResource Raised}"/></Trigger>
+                          </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                      </Setter.Value>
+                    </Setter>
+                  </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                  <DataTemplate>
+                    <StackPanel>
+                      <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis"/>
+                      <TextBlock Text="{Binding Detail}" Style="{StaticResource MutedText}" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Border>
+          </Popup>
+        </Grid>
+
         <StackPanel Margin="0,22,0,0" Visibility="{Binding FiguresTitle, Converter={StaticResource NullToCollapsed}}">
           <TextBlock Text="{Binding FiguresTitle}" Style="{StaticResource H2}" Margin="0,0,0,6"/>
           <ItemsControl ItemsSource="{Binding Figures}" Focusable="False">

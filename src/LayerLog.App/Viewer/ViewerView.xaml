@@ -54,9 +54,11 @@
       </StackPanel>
     </Border>
 
+    <viewer:ComparisonView DataContext="{Binding Attempt}" Visibility="{Binding IsComparing, Converter={StaticResource BoolToVisible}}"/>
+
     <!-- Auto column: with neither a figure nor an attempt the panel goes and the scene takes the whole width -->
     <viewer:FigurePanel Grid.Column="1" Visibility="{Binding ShowSummary, Converter={StaticResource BoolToVisible}}"/>
-    <viewer:AttemptPanel Grid.Column="1" DataContext="{Binding Attempt}"
+    <viewer:AttemptPanel x:Name="AttemptPanel" Grid.Column="1" DataContext="{Binding Attempt}"
                          Visibility="{Binding DataContext.SelectedAttempt, RelativeSource={RelativeSource AncestorType=viewer:ViewerView}, Converter={StaticResource NullToCollapsed}}"/>
   </Grid>
 </UserControl>

@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
+using System.Windows.Data;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,6 +15,12 @@ namespace LayerLog.App.Viewer;
 
 public sealed record ChangeRow(string Label, string Base, string Value);
 public sealed record ChangeGroup(string Caption, IReadOnlyList<ChangeRow> Rows);
+public sealed record CompareRow(string Label, string A, string B);
+/// <param name="Group">The figure's attempts or the other gcode: the selector's two headings.</param>
+public sealed record CompareChoice(long GcodeId, string FileName, string Detail, string Group)
+{
+    public string Name => $"{FileName}, {Detail}";
+}
 
 public sealed partial class FigureLink(AttemptViewModel owner, ObjectLink link, bool isLinked) : ObservableObject
 {
@@ -50,11 +58,28 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
     [ObservableProperty] private string? fullConfigTitle;
     [ObservableProperty] private string? fullConfig;
 
+    [ObservableProperty] private bool isChoosing;
+    [ObservableProperty] private bool isComparing;
+    [ObservableProperty] private bool showRest;
+    [ObservableProperty] private string? compareTitle;
+    [ObservableProperty] private string? compareRestTitle;
+    [ObservableProperty] private string? nameA;
+    [ObservableProperty] private string? nameB;
+    [ObservableProperty] private BitmapImage? thumbA;
+    [ObservableProperty] private BitmapImage? thumbB;
+    [ObservableProperty] private bool hasCompareRows;
+
+    public ObservableCollection<CompareRow> CompareRows { get; } = [];
+    public ObservableCollection<CompareRow> CompareRest { get; } = [];
+    /// <summary>The figure's other attempts, then every other gcode. Built when the selector opens.</summary>
+    public ICollectionView? CompareChoices { get; private set; }
+
     /// <param name="gcodeId">The attempt to show.</param>
     /// <param name="openFigure">The figure it was opened from, or null when it has none.</param>
     public void Show(long gcodeId, string? openFigure = null)
     {
         this.gcodeId = gcodeId;
+        CloseComparison();
         figure = openFigure;
         shownLinks = null;
         var e = repository.Get(gcodeId);
@@ -146,6 +171,49 @@ public sealed partial class AttemptViewModel(HistoryRepository repository, Photo
 
     [RelayCommand]
     void Close() => close();
+
+    partial void OnIsChoosingChanged(bool value)
+    {
+        if (!value) return;
+        var mine = figure is null ? [] : repository.ListForModel(figure).Select(e => e.Id).ToHashSet();
+        var all = repository.List().Where(e => e.Id != gcodeId).ToList();
+        var choices = all.Where(e => mine.Contains(e.Id)).Select(e => Choice(e, "Intents d'aquesta figura"))
+            .Concat(all.Where(e => !mine.Contains(e.Id)).Select(e => Choice(e, mine.Count == 0 ? "Tots els gcode" : "Altres gcode"))).ToList();
+        CompareChoices = new ListCollectionView(choices) { GroupDescriptions = { new PropertyGroupDescription(nameof(CompareChoice.Group)) } };
+        OnPropertyChanged(nameof(CompareChoices));
+    }
+
+    static CompareChoice Choice(GcodeEntry e, string group) => new(e.Id, e.FileName, $"{Dates.Short(e.GeneratedAt)} · {Profiles.Short(e.ProcessProfile)}", group);
+
+    [RelayCommand]
+    void CompareWith(CompareChoice choice)
+    {
+        IsChoosing = false;
+        var (a, b) = (repository.Get(gcodeId), repository.Get(choice.GcodeId));
+        var (known, rest) = AttemptComparison.Between(a, b);
+        var count = known.Count + rest.Count;
+
+        (ThumbA, ThumbB, NameA, NameB) = (Images.From(a.Thumbnail), Images.From(b.Thumbnail), a.FileName, b.FileName);
+        CompareTitle = count switch { 0 => "Cap diferència entre aquests dos gcode", 1 => "1 diferència", _ => $"{count} diferències" };
+        CompareRows.Clear();
+        foreach (var s in known) CompareRows.Add(new CompareRow(s.Label, s.A, s.B));
+        CompareRows.Add(new CompareRow("Millor valoració", Best(a.Id), Best(b.Id)));
+        CompareRest.Clear();
+        foreach (var s in rest) CompareRest.Add(new CompareRow(s.Label, s.A, s.B));
+        CompareRestTitle = rest.Count == 0 ? null : known.Count == 0 ? $"Mostrar {rest.Count} diferències" : $"{rest.Count} diferències més";
+        ShowRest = false;
+        HasCompareRows = count > 0;
+        IsComparing = true;
+    }
+
+    string Best(long id) => repository.BestPrint([id])?.Rating is { } r ? $"{Stars.Text(r)}  {Stars.Spoken(r)}" : Stars.Text(null);
+
+    [RelayCommand]
+    public void CloseComparison()
+    {
+        IsChoosing = false;
+        IsComparing = false;
+    }
 
     public void OpenFigure(string relativePath) => openFigure(relativePath);
 
