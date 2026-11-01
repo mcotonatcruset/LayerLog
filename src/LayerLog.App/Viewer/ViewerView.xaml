@@ -8,7 +8,7 @@
     <!-- The file type shows until the picture is ready, and stays for 3MF and unreadable files -->
     <DataTemplate x:Key="FigureThumb" DataType="viewer:ExplorerNode">
       <Grid Width="40" Height="40">
-        <Border Background="{StaticResource Surface2}" CornerRadius="4" Opacity="0.6"/>
+        <Border Background="{StaticResource Raised}" CornerRadius="4" Opacity="0.6"/>
         <TextBlock Text="{Binding Extension}" Foreground="{StaticResource Muted}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center">
           <TextBlock.Style>
             <Style TargetType="TextBlock">
@@ -70,7 +70,7 @@
                 <Setter TargetName="Row" Property="Background" Value="{StaticResource Hover}"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
-                <Setter TargetName="Row" Property="Background" Value="{StaticResource Selected}"/>
+                <Setter TargetName="Row" Property="Background" Value="{StaticResource Raised}"/>
                 <Setter Property="Foreground" Value="{StaticResource Ink}"/>
               </Trigger>
             </ControlTemplate.Triggers>
@@ -121,7 +121,7 @@
                  Visibility="{Binding Message, Converter={StaticResource NullToCollapsed}}"/>
       <StackPanel Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisible}}">
         <TextBlock Text="Carregant el model" Style="{StaticResource MutedText}" TextAlignment="Center"/>
-        <ProgressBar IsIndeterminate="True" Height="3" Width="180" Margin="0,10,0,0" Foreground="{StaticResource Ivory}" Background="{StaticResource Line}" BorderThickness="0"/>
+        <ProgressBar IsIndeterminate="True" Height="3" Width="180" Margin="0,10,0,0" Foreground="{StaticResource Ink}" Background="{StaticResource Line}" BorderThickness="0"/>
       </StackPanel>
     </StackPanel>
 
@@ -171,7 +171,7 @@
                     <Style TargetType="Border">
                       <Style.Triggers>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                          <Setter Property="Background" Value="{StaticResource Selected}"/>
+                          <Setter Property="Background" Value="{StaticResource Raised}"/>
                         </DataTrigger>
                       </Style.Triggers>
                     </Style>
