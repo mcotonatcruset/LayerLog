@@ -1,4 +1,4 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -26,6 +26,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        FitToWorkArea();
         DataContext = model;
         sd = new SdWatcher(Dispatcher);
         sd.CardChanged += model.OnCardChanged;
@@ -43,6 +44,19 @@ public partial class MainWindow : Window
         {
             if (e.PropertyName == nameof(MainViewModel.Screen) && started && model.ShowFigure) FadeIn(FigureScreen);
         };
+    }
+
+    // Never taller or wider than the screen's work area (taskbar excluded), and centred in it.
+    void FitToWorkArea()
+    {
+        var area = SystemParameters.WorkArea;
+        MinWidth = Math.Min(MinWidth, area.Width);
+        MinHeight = Math.Min(MinHeight, area.Height);
+        Width = Math.Min(Width, area.Width);
+        Height = Math.Min(Height, area.Height);
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        Left = area.Left + (area.Width - Width) / 2;
+        Top = area.Top + (area.Height - Height) / 2;
     }
 
     // One short fade, from the collection into a figure. Windows asks for no animation: none.

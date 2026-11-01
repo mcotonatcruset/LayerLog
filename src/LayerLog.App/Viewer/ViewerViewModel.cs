@@ -12,6 +12,7 @@ namespace LayerLog.App.Viewer;
 public sealed record AttemptRow(long GcodeId, string FileName, string Detail, string State, bool IsRated, string Spoken)
 {
     public string Name => $"{FileName}, {Spoken}";
+    public override string ToString() => Name;
 }
 
 public sealed partial class ViewerViewModel(HistoryRepository repository, CollectionViewModel collection, AttemptViewModel attempt) : ObservableObject

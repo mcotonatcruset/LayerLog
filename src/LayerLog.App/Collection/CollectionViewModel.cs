@@ -35,13 +35,26 @@ public sealed partial class CollectionSection(string folder, IEnumerable<FigureC
 
 // One flat list, so a single virtualized panel scrolls every section.
 public abstract record CollectionRow(string Key);
-public sealed record HeaderRow(string Title, string? Note = null) : CollectionRow($"h{Title}");
-public sealed record SectionRow(CollectionSection Section) : CollectionRow($"s{Section.Folder}");
-public sealed record HeroRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("r" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)));
-public sealed record CardRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("c" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)));
+public sealed record HeaderRow(string Title, string? Note = null) : CollectionRow($"h{Title}")
+{
+    public override string ToString() => Title;
+}
+public sealed record SectionRow(CollectionSection Section) : CollectionRow($"s{Section.Folder}")
+{
+    public override string ToString() => Section.Folder;
+}
+public sealed record HeroRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("r" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)))
+{
+    public override string ToString() => string.Join(", ", Cards.Select(c => c.Figure.Name));
+}
+public sealed record CardRow(IReadOnlyList<FigureCard> Cards) : CollectionRow("c" + string.Join('|', Cards.Select(c => c.Figure.RelativePath)))
+{
+    public override string ToString() => string.Join(", ", Cards.Select(c => c.Figure.Name));
+}
 public sealed record EntryRow(GcodeEntry Entry) : CollectionRow($"e{Entry.Id}")
 {
     public string Date => Dates.Short(Entry.GeneratedAt);
+    public override string ToString() => $"{Entry.FileName}, {Date}";
 }
 
 public sealed partial class CollectionViewModel(HistoryRepository repository, AppSettings loaded, Action<string> toast, Action<string> open, Action<long> openOrphan) : ObservableObject

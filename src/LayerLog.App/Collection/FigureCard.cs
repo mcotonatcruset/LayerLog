@@ -10,6 +10,8 @@ public sealed partial class FigureCard(Figure figure, Action markedChanged) : Ob
     /// <summary>The picture's width in Recents, and in a folder, in device-independent pixels.</summary>
     public const double HeroSize = 250, CompactSize = 130;
 
+    public override string ToString() => Figure.Name;
+
     public string? ThumbnailPath { get; set; }
     public int DecodedWidth { get; set; }
 

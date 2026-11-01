@@ -13,19 +13,30 @@ using Microsoft.Win32;
 
 namespace LayerLog.App.Viewer;
 
-public sealed record ChangeRow(string Label, string Base, string Value);
-public sealed record ChangeGroup(string Caption, IReadOnlyList<ChangeRow> Rows);
-public sealed record CompareRow(string Label, string A, string B);
+public sealed record ChangeRow(string Label, string Base, string Value)
+{
+    public override string ToString() => $"{Label}: {Base} → {Value}";
+}
+public sealed record ChangeGroup(string Caption, IReadOnlyList<ChangeRow> Rows)
+{
+    public override string ToString() => Caption;
+}
+public sealed record CompareRow(string Label, string A, string B)
+{
+    public override string ToString() => $"{Label}: {A}, {B}";
+}
 /// <param name="Group">The figure's attempts or the other gcode: the selector's two headings.</param>
 public sealed record CompareChoice(long GcodeId, string FileName, string Detail, string Group)
 {
     public string Name => $"{FileName}, {Detail}";
+    public override string ToString() => Name;
 }
 
 public sealed partial class FigureLink(AttemptViewModel owner, ObjectLink link, bool isLinked) : ObservableObject
 {
     public string Name => link.Name;
     public bool IsLinked => isLinked;
+    public override string ToString() => link.Name;
 
     [RelayCommand]
     void Open() => owner.OpenFigure(link.ModelPath!);
