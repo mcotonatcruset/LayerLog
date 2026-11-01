@@ -8,7 +8,7 @@
       <Setter Property="Template">
         <Setter.Value>
           <ControlTemplate TargetType="ListBoxItem">
-            <Border x:Name="B" CornerRadius="6" Padding="8" Background="Transparent">
+            <Border x:Name="B" CornerRadius="6" Padding="6" BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
               <ContentPresenter/>
             </Border>
             <ControlTemplate.Triggers>
@@ -17,6 +17,9 @@
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="B" Property="Background" Value="{StaticResource Raised}"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="B" Property="BorderBrush" Value="{StaticResource Ink}"/>
               </Trigger>
             </ControlTemplate.Triggers>
           </ControlTemplate>

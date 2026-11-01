@@ -41,7 +41,7 @@
         <Setter.Value>
           <ControlTemplate TargetType="TreeViewItem">
             <StackPanel>
-              <Border x:Name="Row" CornerRadius="5" Padding="6,4" Background="Transparent">
+              <Border x:Name="Row" CornerRadius="5" Padding="4,2" BorderThickness="2" BorderBrush="Transparent" Background="Transparent">
                 <Grid>
                   <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="16"/>
@@ -68,6 +68,9 @@
               </Trigger>
               <Trigger Property="IsMouseOver" SourceName="Row" Value="True">
                 <Setter TargetName="Row" Property="Background" Value="{StaticResource Hover}"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter TargetName="Row" Property="BorderBrush" Value="{StaticResource Ink}"/>
               </Trigger>
               <Trigger Property="IsSelected" Value="True">
                 <Setter TargetName="Row" Property="Background" Value="{StaticResource Raised}"/>

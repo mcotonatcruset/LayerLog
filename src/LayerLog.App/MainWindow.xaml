@@ -5,14 +5,15 @@
         xmlns:history="clr-namespace:LayerLog.App.History"
         Title="LayerLog" Width="1500" Height="900" MinWidth="1100" MinHeight="700"
         Background="{StaticResource Sweep}" Foreground="{StaticResource Ink}"
-        FontFamily="{StaticResource UiFont}" FontSize="14" TextOptions.TextFormattingMode="Ideal">
+        FontFamily="{StaticResource UiFont}" FontSize="14" Typography.NumeralAlignment="Tabular" TextOptions.TextFormattingMode="Ideal">
   <Grid>
-    <viewer:ViewerView DataContext="{Binding Viewer}"
+    <viewer:ViewerView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding Viewer}"
                        Visibility="{Binding DataContext.ShowViewer, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisible}}"/>
-    <history:HistoryView DataContext="{Binding History}" Margin="0,48,0,0"
+    <history:HistoryView KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="1" DataContext="{Binding History}" Margin="0,48,0,0"
                          Visibility="{Binding DataContext.ShowViewer, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource NotBoolToVisible}}"/>
 
-    <DockPanel VerticalAlignment="Top" Height="48" Margin="20,0" LastChildFill="False" Effect="{StaticResource SceneShadow}">
+    <!-- Last child so it draws on top; TabIndex (on Local groups, else ignored) makes Tab reach the tabs first -->
+    <DockPanel KeyboardNavigation.TabNavigation="Local" KeyboardNavigation.TabIndex="0" VerticalAlignment="Top" Height="48" Margin="20,0" LastChildFill="False" Effect="{StaticResource SceneShadow}">
       <TextBlock Text="LayerLog" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,24,0"/>
       <RadioButton Style="{StaticResource TabButton}" Content="Visor" IsChecked="{Binding ShowViewer}" GroupName="Tabs" VerticalAlignment="Center"/>
       <RadioButton Style="{StaticResource TabButton}" Content="Historial" GroupName="Tabs" VerticalAlignment="Center" Margin="4,0,0,0"
